@@ -13,20 +13,23 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none rounded-md";
+      "inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none rounded-md select-none cursor-pointer";
 
     const variantStyles = {
-      primary: "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm",
-      secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+      primary:
+        "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-[#743a44] shadow-xs border border-transparent",
+      secondary:
+        "bg-secondary text-secondary-foreground hover:bg-[#eddcd3] active:bg-[#e4cdc2] border border-border",
       outline:
-        "border border-border bg-transparent text-foreground hover:bg-muted",
-      ghost: "text-foreground hover:bg-muted",
+        "border border-border bg-card text-foreground hover:bg-muted active:bg-[#e8ded5] shadow-xs",
+      ghost:
+        "text-foreground hover:bg-muted active:bg-[#e8ded5]",
     };
 
     const sizeStyles = {
-      sm: "h-8 px-3 text-xs",
-      md: "h-10 px-4 text-sm",
-      lg: "h-12 px-6 text-base",
+      sm: "h-8 px-3 text-xs gap-1.5",
+      md: "h-10 px-4 text-sm gap-2",
+      lg: "h-12 px-6 text-base gap-2.5",
     };
 
     return (

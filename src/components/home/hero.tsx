@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden py-16 sm:py-24">
+    <section className="relative overflow-hidden pt-16 pb-20 sm:pt-24 sm:pb-28">
       <div className="container mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-accent/60 px-3.5 py-1 text-xs font-medium text-accent-foreground mb-6">
@@ -20,7 +20,7 @@ export function Hero() {
             Discover premier hair, skincare, and spa treatments. Select your preferred specialist, pick a suitable time slot, and manage your bookings effortlessly.
           </p>
 
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="mt-9 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/services">
               <Button size="lg" className="w-full sm:w-auto">
                 <Calendar className="mr-2 h-4 w-4" />
