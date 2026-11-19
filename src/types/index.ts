@@ -78,6 +78,54 @@ export interface ImageUploadResponse {
   data?: ImageUploadData;
 }
 
+export type AppointmentStatus = "pending" | "confirmed" | "cancelled";
+export type PaymentStatus = "unpaid" | "paid";
+
+export interface AppointmentServiceInfo {
+  _id: string;
+  name: string;
+  slug?: string;
+  category: string;
+  duration: number;
+  image?: string;
+  description?: string;
+}
+
+export interface Appointment {
+  _id: string;
+  serviceId: string;
+  customerId: string;
+  appointmentDate: string; // YYYY-MM-DD
+  timeSlot: string; // Canonical 24-hour HH:mm
+  message?: string;
+  servicePrice: number;
+  paymentStatus: PaymentStatus;
+  status: AppointmentStatus;
+  createdAt: string;
+  updatedAt: string;
+  service?: AppointmentServiceInfo | null;
+}
+
+export interface CreateAppointmentInput {
+  serviceId: string;
+  appointmentDate: string; // YYYY-MM-DD
+  timeSlot: string; // Canonical 24-hour HH:mm
+  message?: string;
+}
+
+export interface AppointmentsResponse {
+  success: boolean;
+  count: number;
+  pagination: PaginationMeta;
+  data: Appointment[];
+}
+
+export interface SingleAppointmentResponse {
+  success: boolean;
+  message?: string;
+  data: Appointment;
+}
+
 export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 
 export interface Booking {

@@ -96,6 +96,14 @@ export function Navbar() {
           >
             Dashboard
           </Link>
+          {user && !isAdmin && (
+            <Link
+              href="/dashboard/appointments"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1.5 py-1"
+            >
+              My Appointments
+            </Link>
+          )}
           {isAdmin && (
             <Link
               href="/dashboard/admin/services"
@@ -261,6 +269,15 @@ export function Navbar() {
             >
               Dashboard
             </Link>
+            {user && !isAdmin && (
+              <Link
+                href="/dashboard/appointments"
+                onClick={() => setIsOpen(false)}
+                className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                My Appointments
+              </Link>
+            )}
             {isAdmin && (
               <Link
                 href="/dashboard/admin/services"

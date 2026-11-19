@@ -25,4 +25,10 @@ export const API_ENDPOINTS = {
   UPLOADS: {
     SERVICE_IMAGE: `${API_BASE_URL}/api/uploads/service-image`,
   },
+  APPOINTMENTS: {
+    BASE: `${API_BASE_URL}/api/appointments`,
+    MY: `${API_BASE_URL}/api/appointments/my`,
+    MY_BY_ID: (id: string) => `${API_BASE_URL}/api/appointments/my/${id}`,
+    CANCEL_MY: (id: string) => `${API_BASE_URL}/api/appointments/my/${id}/cancel`,
+  },
 } as const;

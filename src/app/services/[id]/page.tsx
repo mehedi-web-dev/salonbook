@@ -12,12 +12,12 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
-  Calendar,
   HelpCircle,
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { BookingForm } from "@/components/booking/booking-form";
 import { fetchServiceById } from "@/lib/services-api";
 import { useSession } from "@/lib/auth-client";
 import type { Service } from "@/types";
@@ -339,25 +339,8 @@ export default function ServiceDetailPage() {
             </div>
           </div>
 
-          {/* Booking Notice Placeholder */}
-          <div className="rounded-lg border border-dashed border-border bg-accent/30 p-5 text-center">
-            <div className="flex items-center justify-center gap-2 text-primary font-medium text-sm mb-1">
-              <Calendar className="h-4 w-4" />
-              <span>Online Booking Coming Next</span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Instant appointment scheduling with specialist and time slot selection will be
-              enabled in Phase 4.
-            </p>
-            <div className="mt-4">
-              <Link href="/services">
-                <Button variant="outline" size="sm">
-                  <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
-                  <span>Browse Other Services</span>
-                </Button>
-              </Link>
-            </div>
-          </div>
+          {/* Customer Appointment Booking Form */}
+          <BookingForm service={service} />
         </div>
       </div>
     </div>

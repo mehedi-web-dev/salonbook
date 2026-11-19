@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -19,10 +19,14 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useSession, signOut } from "@/lib/auth-client";
+import { getMyAppointments } from "@/lib/appointments-api";
+import type { Appointment } from "@/types";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
+  const [recentAppointments, setRecentAppointments] = useState<Appointment[]>([]);
+  const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
 
   // Redirect to login if unauthenticated once check finishes
   useEffect(() => {
@@ -31,6 +35,36 @@ export default function DashboardPage() {
       router.replace("/login");
     }
   }, [isPending, session, router]);
+
+  // Load customer appointments
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadRecent() {
+      if (!session?.user || session.user.role === "admin") {
+        if (isCurrent) setIsLoadingAppointments(false);
+        return;
+      }
+      try {
+        const response = await getMyAppointments({ limit: 3 });
+        if (isCurrent) {
+          setRecentAppointments(response.data || []);
+        }
+      } catch {
+        // Fallback for dashboard preview
+      } finally {
+        if (isCurrent) {
+          setIsLoadingAppointments(false);
+        }
+      }
+    }
+
+    loadRecent();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [session]);
 
   const handleSignOut = async () => {
     try {
@@ -111,7 +145,15 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {!isAdmin && (
+            <Link href="/dashboard/appointments">
+              <Button variant="outline" size="sm">
+                <Clock className="mr-1.5 h-3.5 w-3.5" />
+                <span>My Appointments</span>
+              </Button>
+            </Link>
+          )}
           <Link href="/services">
             <Button variant="primary" size="sm" disabled={isBlocked}>
               <Calendar className="mr-2 h-4 w-4" />
@@ -213,7 +255,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Appointments Section Placeholder (Scheduled for Bookings Phase) */}
+        {/* Appointments Section */}
         <div className="rounded-lg border border-border bg-card p-6 shadow-xs lg:col-span-2">
           <div className="flex items-center justify-between border-b border-border pb-4">
             <div className="flex items-center gap-2">
@@ -222,30 +264,91 @@ export default function DashboardPage() {
                 Your Appointments
               </h2>
             </div>
-            <Link
-              href="/services"
-              className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1"
-            >
-              <span>Explore Menu</span>
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            {!isAdmin && (
+              <Link
+                href="/dashboard/appointments"
+                className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1"
+              >
+                <span>View All</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            )}
           </div>
 
-          <div className="mt-6 rounded-lg border border-dashed border-border bg-muted/30 p-10 text-center">
-            <Clock className="mx-auto h-8 w-8 text-muted-foreground/60 mb-2" />
-            <h3 className="text-sm font-medium text-foreground">No bookings recorded yet</h3>
-            <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
-              Your scheduled hair styling, skincare treatments, and wellness appointments will
-              appear here once the booking API is activated in Phase 3.
-            </p>
-            <div className="mt-5">
-              <Link href="/services">
-                <Button variant="outline" size="sm" disabled={isBlocked}>
-                  Browse Salon Services
-                </Button>
-              </Link>
+          {isLoadingAppointments ? (
+            <div className="mt-6 space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-16 rounded-md bg-muted/40 animate-pulse" />
+              ))}
             </div>
-          </div>
+          ) : recentAppointments.length > 0 ? (
+            <div className="mt-6 space-y-3">
+              {recentAppointments.map((app) => (
+                <div
+                  key={app._id}
+                  className="flex items-center justify-between rounded-lg border border-border bg-secondary/20 p-4 transition-colors hover:bg-secondary/40"
+                >
+                  <div className="space-y-1 min-w-0 pr-3">
+                    <h3 className="font-medium text-foreground text-sm truncate">
+                      {app.service?.name || "Salon Treatment"}
+                    </h3>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1 text-foreground font-medium">
+                        <Calendar className="h-3 w-3 text-primary" />
+                        <span>{app.appointmentDate}</span>
+                      </span>
+                      <span>&bull;</span>
+                      <span className="flex items-center gap-1 text-foreground font-medium">
+                        <Clock className="h-3 w-3 text-primary" />
+                        <span>{app.timeSlot}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-bold text-foreground text-sm">
+                      ${app.servicePrice}
+                    </span>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                        app.status === "confirmed"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : app.status === "pending"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-rose-100 text-rose-800"
+                      }`}
+                    >
+                      {app.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              <div className="mt-4 pt-2 text-center">
+                <Link href="/dashboard/appointments">
+                  <Button variant="outline" size="sm" className="w-full text-xs">
+                    <span>Manage Full Appointments History</span>
+                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6 rounded-lg border border-dashed border-border bg-muted/30 p-10 text-center">
+              <Clock className="mx-auto h-8 w-8 text-muted-foreground/60 mb-2" />
+              <h3 className="text-sm font-medium text-foreground">No bookings recorded yet</h3>
+              <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
+                Explore our signature salon treatments and reserve your preferred appointment time.
+              </p>
+              <div className="mt-5">
+                <Link href="/services">
+                  <Button variant="outline" size="sm" disabled={isBlocked}>
+                    Browse Salon Services
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
