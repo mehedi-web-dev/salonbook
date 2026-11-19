@@ -98,11 +98,11 @@ export function Navbar() {
           </Link>
           {isAdmin && (
             <Link
-              href="/dashboard"
+              href="/dashboard/admin/services"
               className="inline-flex items-center gap-1 rounded bg-accent/70 px-2 py-0.5 text-xs font-semibold text-accent-foreground hover:bg-accent transition-colors"
             >
               <Shield className="h-3 w-3" />
-              <span>Admin Portal</span>
+              <span>Admin Services</span>
             </Link>
           )}
         </nav>
@@ -263,12 +263,12 @@ export function Navbar() {
             </Link>
             {isAdmin && (
               <Link
-                href="/dashboard"
+                href="/dashboard/admin/services"
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-rose-800 hover:bg-rose-50 transition-colors"
               >
                 <Shield className="h-4 w-4" />
-                <span>Admin Portal</span>
+                <span>Admin Services Management</span>
               </Link>
             )}
           </div>

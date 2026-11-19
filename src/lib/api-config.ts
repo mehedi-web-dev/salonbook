@@ -22,4 +22,7 @@ export const API_ENDPOINTS = {
     REGISTER: `${API_BASE_URL}/api/auth/register`,
     ME: `${API_BASE_URL}/api/auth/me`,
   },
+  UPLOADS: {
+    SERVICE_IMAGE: `${API_BASE_URL}/api/uploads/service-image`,
+  },
 } as const;

@@ -192,15 +192,23 @@ export default function DashboardPage() {
           </div>
 
           {isAdmin && (
-            <div className="mt-6 rounded-md border border-rose-200 bg-rose-50/60 p-3 text-xs text-rose-900">
-              <p className="font-semibold flex items-center gap-1">
-                <Shield className="h-3.5 w-3.5 text-rose-700" />
+            <div className="mt-6 rounded-md border border-rose-200 bg-rose-50/60 p-4 text-xs text-rose-900">
+              <p className="font-semibold flex items-center gap-1.5 text-rose-950">
+                <Shield className="h-4 w-4 text-rose-700" />
                 Admin Privileges Active
               </p>
-              <p className="mt-1 text-[11px] text-rose-800 leading-relaxed">
-                You have administrative access to salon operations, stylist scheduling, and
-                service management.
+              <p className="mt-1.5 text-[11px] text-rose-800 leading-relaxed">
+                You have full administrative access to treatment pricing, catalog availability,
+                and image uploads.
               </p>
+              <div className="mt-3.5">
+                <Link href="/dashboard/admin/services" className="block w-full">
+                  <Button variant="primary" size="sm" className="w-full gap-1.5 text-xs">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Manage Services Catalog</span>
+                  </Button>
+                </Link>
+              </div>
             </div>
           )}
         </div>

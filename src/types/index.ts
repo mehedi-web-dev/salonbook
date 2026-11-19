@@ -50,6 +50,34 @@ export interface SingleServiceResponse {
   message?: string;
 }
 
+export interface CreateServiceInput {
+  name: string;
+  slug?: string;
+  description: string;
+  shortDescription?: string;
+  category: string;
+  price: number;
+  duration: number;
+  image?: string;
+  isActive?: boolean;
+}
+
+export type UpdateServiceInput = Partial<CreateServiceInput>;
+
+export interface ImageUploadData {
+  url: string;
+  displayUrl: string;
+  deleteUrl?: string | null;
+  thumbUrl?: string | null;
+  title?: string;
+}
+
+export interface ImageUploadResponse {
+  success: boolean;
+  message: string;
+  data?: ImageUploadData;
+}
+
 export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 
 export interface Booking {

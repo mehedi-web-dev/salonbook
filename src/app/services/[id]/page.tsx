@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -14,14 +14,20 @@ import {
   RefreshCw,
   Calendar,
   HelpCircle,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { fetchServiceById } from "@/lib/services-api";
+import { useSession } from "@/lib/auth-client";
 import type { Service } from "@/types";
 
 export default function ServiceDetailPage() {
+  const router = useRouter();
   const params = useParams();
   const id = typeof params?.id === "string" ? params.id : "";
+
+  const { data: session, isPending: isSessionLoading } = useSession();
 
   const [service, setService] = useState<Service | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,15 +35,24 @@ export default function ServiceDetailPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
 
+  // Route protection: redirect unauthenticated users to /login
   useEffect(() => {
-    if (!id) return;
+    if (!isSessionLoading && !session?.user) {
+      toast.info("Please sign in to view treatment details");
+      router.replace("/login");
+    }
+  }, [isSessionLoading, session, router]);
+
+  useEffect(() => {
+    if (!id || isSessionLoading || !session?.user) return;
     let isCurrent = true;
 
     async function executeFetch() {
       try {
         const data = await fetchServiceById(id);
         if (isCurrent) {
-          if (!data || !data.isActive) {
+          const isAdmin = session?.user?.role === "admin";
+          if (!data || (!data.isActive && !isAdmin)) {
             setIsNotFound(true);
           } else {
             setService(data);
@@ -67,7 +82,7 @@ export default function ServiceDetailPage() {
     return () => {
       isCurrent = false;
     };
-  }, [id]);
+  }, [id, isSessionLoading, session]);
 
   const handleRetry = () => {
     if (!id) return;
@@ -77,7 +92,8 @@ export default function ServiceDetailPage() {
 
     fetchServiceById(id)
       .then((data) => {
-        if (!data || !data.isActive) {
+        const isAdmin = session?.user?.role === "admin";
+        if (!data || (!data.isActive && !isAdmin)) {
           setIsNotFound(true);
         } else {
           setService(data);
@@ -98,6 +114,25 @@ export default function ServiceDetailPage() {
         setIsLoading(false);
       });
   };
+
+  // While checking session authentication, show minimal loading state
+  if (isSessionLoading) {
+    return (
+      <div className="container mx-auto flex min-h-[calc(100vh-14rem)] items-center justify-center px-4 py-16">
+        <div className="flex flex-col items-center gap-2.5">
+          <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          <p className="text-xs font-medium text-muted-foreground">
+            Verifying secure session...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // If unauthenticated, redirecting to /login
+  if (!session?.user) {
+    return null;
+  }
 
   if (isLoading) {
     return (
