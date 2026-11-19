@@ -45,12 +45,18 @@ export interface Booking {
 }
 
 export interface User {
-  _id: string;
+  _id?: string;
+  id?: string;
   name: string;
   email: string;
+  emailVerified?: boolean;
+  image?: string | null;
   role: "customer" | "admin" | "stylist";
+  isBlocked?: boolean;
   phone?: string;
   avatar?: string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 }
 
 export interface ApiResponse<T = unknown> {
