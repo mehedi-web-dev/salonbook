@@ -14,16 +14,40 @@ export type ServiceCategory =
 export interface Service {
   _id: string;
   name: string;
-  category: ServiceCategory;
+  slug?: string;
   description: string;
-  durationMinutes: number;
+  shortDescription?: string;
+  category: string;
   price: number;
+  duration: number; // in minutes
+  durationMinutes?: number; // compatibility alias
   image?: string;
+  isActive: boolean;
   isFeatured?: boolean;
   rating?: number;
   reviewsCount?: number;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface ServicesResponse {
+  success: boolean;
+  count: number;
+  pagination: PaginationMeta;
+  data: Service[];
+}
+
+export interface SingleServiceResponse {
+  success: boolean;
+  data?: Service;
+  message?: string;
 }
 
 export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
