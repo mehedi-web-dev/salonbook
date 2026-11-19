@@ -1,69 +1,102 @@
-import Image from "next/image";
+import { Hero } from "@/components/home/hero";
+import Link from "next/link";
+import { Scissors, Sparkles, HeartHandshake, CalendarCheck } from "lucide-react";
 
 export default function Home() {
+  const highlights = [
+    {
+      icon: Scissors,
+      title: "Expert Stylists",
+      description: "Certified professionals tailored to your aesthetic and care goals.",
+    },
+    {
+      icon: Sparkles,
+      title: "Premium Treatments",
+      description: "Organic, top-tier products for hair, skin, and wellness.",
+    },
+    {
+      icon: CalendarCheck,
+      title: "Real-time Booking",
+      description: "Seamless scheduling with instant slot selection and status tracking.",
+    },
+    {
+      icon: HeartHandshake,
+      title: "Personalized Care",
+      description: "Customized salon consultations curated for your convenience.",
+    },
+  ];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="flex flex-col">
+      <Hero />
+
+      {/* Highlights / Features Preview */}
+      <section className="border-t border-border bg-card/60 py-16">
+        <div className="container mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="text-center max-w-xl mx-auto mb-12">
+            <h2 className="font-serif text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
+              A refined salon journey
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Experience tranquility and craftsmanship in every appointment.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {highlights.map((item) => (
+              <div
+                key={item.title}
+                className="rounded-lg border border-border bg-background p-6 transition-all hover:border-primary/40 hover:shadow-sm"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-accent text-accent-foreground mb-4">
+                  <item.icon className="h-5 w-5" />
+                </div>
+                <h3 className="font-serif text-base font-semibold text-foreground">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Quick Navigation Banner */}
+      <section className="py-12 bg-secondary/40 border-t border-border">
+        <div className="container mx-auto max-w-6xl px-4 sm:px-6 text-center">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
+            Frontend Foundation Ready
           </p>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-medium text-foreground">
+            <Link
+              href="/services"
+              className="rounded-md border border-border bg-card px-3 py-1.5 hover:bg-muted"
+            >
+              /services &rarr;
+            </Link>
+            <Link
+              href="/dashboard"
+              className="rounded-md border border-border bg-card px-3 py-1.5 hover:bg-muted"
+            >
+              /dashboard &rarr;
+            </Link>
+            <Link
+              href="/login"
+              className="rounded-md border border-border bg-card px-3 py-1.5 hover:bg-muted"
+            >
+              /login &rarr;
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-md border border-border bg-card px-3 py-1.5 hover:bg-muted"
+            >
+              /register &rarr;
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </section>
     </div>
   );
 }
