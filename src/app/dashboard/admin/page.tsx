@@ -17,6 +17,7 @@ import {
   ArrowRight,
   Shield,
   Tag,
+  User as UserIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminGuard } from "@/components/admin/admin-guard";
@@ -109,6 +110,12 @@ export default function AdminDashboardPage() {
               <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
               <span>Refresh Metrics</span>
             </Button>
+            <Link href="/dashboard/profile">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                <UserIcon className="h-3.5 w-3.5" />
+                <span>My Profile</span>
+              </Button>
+            </Link>
             <Link href="/dashboard/admin/services">
               <Button variant="primary" size="sm" className="gap-1.5 text-xs">
                 <Sparkles className="h-3.5 w-3.5" />

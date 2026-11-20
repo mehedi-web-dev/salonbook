@@ -349,3 +349,31 @@ export interface SingleAdminTransactionResponse {
   message?: string;
   data: AdminTransaction;
 }
+
+// ==========================================
+// User Profile & Image Upload Types
+// ==========================================
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  image: string | null;
+  phone: string | null;
+  role: "customer" | "admin" | "stylist" | string;
+  isBlocked: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProfileResponse {
+  success: boolean;
+  message?: string;
+  data: UserProfile;
+}
+
+export interface UpdateProfileInput {
+  name?: string;
+  phone?: string | null;
+  image?: string | null;
+}

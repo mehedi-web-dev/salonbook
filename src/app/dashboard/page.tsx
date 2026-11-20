@@ -165,6 +165,12 @@ export default function DashboardPage() {
                   <span>Payment History</span>
                 </Button>
               </Link>
+              <Link href="/dashboard/profile">
+                <Button variant="outline" size="sm">
+                  <UserIcon className="mr-1.5 h-3.5 w-3.5" />
+                  <span>Profile Settings</span>
+                </Button>
+              </Link>
             </>
           )}
           <Link href="/services">

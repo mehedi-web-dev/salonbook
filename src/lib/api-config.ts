@@ -24,6 +24,10 @@ export const API_ENDPOINTS = {
   },
   UPLOADS: {
     SERVICE_IMAGE: `${API_BASE_URL}/api/uploads/service-image`,
+    PROFILE_IMAGE: `${API_BASE_URL}/api/uploads/profile-image`,
+  },
+  PROFILE: {
+    ME: `${API_BASE_URL}/api/profile/me`,
   },
   APPOINTMENTS: {
     BASE: `${API_BASE_URL}/api/appointments`,

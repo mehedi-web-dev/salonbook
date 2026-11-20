@@ -150,6 +150,16 @@ export function Navbar() {
               >
                 Transactions
               </Link>
+              <Link
+                href="/dashboard/profile"
+                className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  pathname === "/dashboard/profile"
+                    ? "bg-rose-100 text-rose-900 font-semibold border border-rose-200"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                Profile
+              </Link>
             </>
           ) : (
             <>
@@ -195,6 +205,16 @@ export function Navbar() {
                   >
                     Payment History
                   </Link>
+                  <Link
+                    href="/dashboard/profile"
+                    className={`text-sm font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-2 py-1 ${
+                      pathname === "/dashboard/profile"
+                        ? "text-primary font-semibold"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    Profile
+                  </Link>
                 </>
               )}
             </>
@@ -211,8 +231,9 @@ export function Navbar() {
             <div className="flex items-center gap-3">
               {/* User Profile Badge */}
               <Link
-                href={isAdmin ? "/dashboard/admin" : "/dashboard"}
+                href="/dashboard/profile"
                 className="flex items-center gap-2 rounded-full border border-border bg-card py-1 pr-3 pl-1.5 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                title="View Personal Profile"
               >
                 {user.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -407,6 +428,17 @@ export function Navbar() {
                 >
                   Transactions
                 </Link>
+                <Link
+                  href="/dashboard/profile"
+                  onClick={() => setIsOpen(false)}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    pathname === "/dashboard/profile"
+                      ? "bg-rose-100 text-rose-900 font-semibold"
+                      : "text-foreground hover:bg-muted"
+                  }`}
+                >
+                  My Profile
+                </Link>
               </>
             ) : (
               <>
@@ -466,6 +498,17 @@ export function Navbar() {
                       }`}
                     >
                       Payment History
+                    </Link>
+                    <Link
+                      href="/dashboard/profile"
+                      onClick={() => setIsOpen(false)}
+                      className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                        pathname === "/dashboard/profile"
+                          ? "bg-accent text-accent-foreground font-semibold"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      My Profile
                     </Link>
                   </>
                 )}
