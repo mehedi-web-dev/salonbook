@@ -14,6 +14,8 @@ import {
   MessageSquare,
   ChevronLeft,
   ChevronRight,
+  CreditCard,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,7 @@ import {
   getMyAppointments,
   cancelMyAppointment,
 } from "@/lib/appointments-api";
+import { createCheckoutSession } from "@/lib/payments-api";
 import type { Appointment, AppointmentStatus, PaginationMeta } from "@/types";
 
 export default function MyAppointmentsPage() {
@@ -42,6 +45,29 @@ export default function MyAppointmentsPage() {
   // Cancellation modal state
   const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+
+  // Stripe Checkout payment loading state
+  const [payingAppointmentId, setPayingAppointmentId] = useState<string | null>(null);
+
+  const handlePayNow = async (app: Appointment) => {
+    if (app.status !== "confirmed" || app.paymentStatus !== "unpaid") {
+      toast.error("This appointment is not eligible for payment");
+      return;
+    }
+    setPayingAppointmentId(app._id);
+    try {
+      const data = await createCheckoutSession(app._id);
+      if (data?.url) {
+        window.location.assign(data.url);
+      } else {
+        throw new Error("No Stripe checkout URL received from server");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to initiate payment";
+      toast.error(msg);
+      setPayingAppointmentId(null);
+    }
+  };
 
   const fetchAppointmentsData = async (page: number, status: "all" | AppointmentStatus) => {
     setIsLoading(true);
@@ -170,7 +196,13 @@ export default function MyAppointmentsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <Link href="/dashboard/payments">
+              <Button variant="outline" size="md" className="gap-2">
+                <CreditCard className="h-4 w-4" />
+                <span>Payment History</span>
+              </Button>
+            </Link>
             <Link href="/services">
               <Button variant="primary" size="md" className="gap-2 shadow-xs">
                 <Calendar className="h-4 w-4" />
@@ -411,9 +443,14 @@ export default function MyAppointmentsPage() {
                             Awaiting stylist confirmation. You may cancel if needed.
                           </span>
                         )}
-                        {isConfirmed && (
-                          <span className="text-emerald-800">
-                            Confirmed reservation. Please arrive 10 minutes prior.
+                        {isConfirmed && app.paymentStatus === "unpaid" && (
+                          <span className="text-primary font-medium">
+                            Confirmed. Ready for secure payment via Stripe Checkout.
+                          </span>
+                        )}
+                        {isConfirmed && app.paymentStatus === "paid" && (
+                          <span className="text-emerald-800 font-medium">
+                            Payment confirmed. Please arrive 10 minutes prior to session.
                           </span>
                         )}
                         {isCancelled && (
@@ -424,6 +461,29 @@ export default function MyAppointmentsPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {/* Pay Now Button: Only for confirmed + unpaid appointments */}
+                        {isConfirmed && app.paymentStatus === "unpaid" && (
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            disabled={payingAppointmentId === app._id}
+                            onClick={() => handlePayNow(app)}
+                            className="text-xs gap-1.5 shadow-xs"
+                          >
+                            {payingAppointmentId === app._id ? (
+                              <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                <span>Connecting to Stripe...</span>
+                              </>
+                            ) : (
+                              <>
+                                <CreditCard className="h-3.5 w-3.5" />
+                                <span>Pay Now (${app.servicePrice})</span>
+                              </>
+                            )}
+                          </Button>
+                        )}
                         {/* Cancel Button only active for pending appointments */}
                         {isPending && (
                           <Button

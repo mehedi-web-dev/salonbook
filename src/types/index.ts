@@ -126,6 +126,61 @@ export interface SingleAppointmentResponse {
   data: Appointment;
 }
 
+export type TransactionStatus = "paid" | "failed" | "reconciliation_required";
+
+export interface PaymentTransaction {
+  _id: string;
+  appointmentId: string;
+  customerId: string;
+  stripeSessionId?: string;
+  stripePaymentIntentId?: string;
+  amount: number;
+  currency: string;
+  status: TransactionStatus;
+  paymentMethod?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  appointment?: {
+    _id: string;
+    appointmentDate: string;
+    timeSlot: string;
+    status: string;
+    paymentStatus: string;
+    serviceId: string;
+  } | null;
+  service?: {
+    _id: string;
+    name: string;
+    slug?: string;
+    category: string;
+    duration: number;
+    image?: string;
+  } | null;
+}
+
+export interface CreateCheckoutSessionResponse {
+  success: boolean;
+  message: string;
+  data: {
+    sessionId: string;
+    url: string;
+  };
+}
+
+export interface PaymentsResponse {
+  success: boolean;
+  count: number;
+  pagination: PaginationMeta;
+  data: PaymentTransaction[];
+}
+
+export interface SinglePaymentResponse {
+  success: boolean;
+  message?: string;
+  data: PaymentTransaction;
+}
+
 export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 
 export interface Booking {

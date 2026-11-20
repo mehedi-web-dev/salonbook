@@ -15,6 +15,7 @@ import {
   Loader2,
   Clock,
   ArrowRight,
+  CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -147,12 +148,20 @@ export default function DashboardPage() {
 
         <div className="flex flex-wrap items-center gap-3">
           {!isAdmin && (
-            <Link href="/dashboard/appointments">
-              <Button variant="outline" size="sm">
-                <Clock className="mr-1.5 h-3.5 w-3.5" />
-                <span>My Appointments</span>
-              </Button>
-            </Link>
+            <>
+              <Link href="/dashboard/appointments">
+                <Button variant="outline" size="sm">
+                  <Clock className="mr-1.5 h-3.5 w-3.5" />
+                  <span>My Appointments</span>
+                </Button>
+              </Link>
+              <Link href="/dashboard/payments">
+                <Button variant="outline" size="sm">
+                  <CreditCard className="mr-1.5 h-3.5 w-3.5" />
+                  <span>Payment History</span>
+                </Button>
+              </Link>
+            </>
           )}
           <Link href="/services">
             <Button variant="primary" size="sm" disabled={isBlocked}>
