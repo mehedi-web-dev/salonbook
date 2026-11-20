@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Sparkles, Menu, X, LogOut, User as UserIcon, Shield, Loader2 } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { Sparkles, Menu, X, LogOut, User as UserIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useSession, signOut } from "@/lib/auth-client";
 
 export function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { data: session, isPending: isSessionLoading } = useSession();
@@ -62,6 +63,19 @@ export function Navbar() {
   const user = session?.user;
   const isAdmin = user?.role === "admin";
 
+  const isAdminRouteActive = (route: string) => {
+    if (route === "/dashboard/admin") {
+      return pathname === "/dashboard/admin";
+    }
+    return pathname.startsWith(route);
+  };
+
+  const isCustomerRouteActive = (route: string) => {
+    if (route === "/") return pathname === "/";
+    if (route === "/dashboard") return pathname === "/dashboard";
+    return pathname.startsWith(route);
+  };
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur-sm">
       <div className="container mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -69,7 +83,7 @@ export function Navbar() {
         <Link
           href="/"
           onClick={() => setIsOpen(false)}
-          className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
+          className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md shrink-0"
         >
           <span className="flex h-9 w-9 items-center justify-center rounded-md bg-accent text-accent-foreground">
             <Sparkles className="h-5 w-5" />
@@ -82,44 +96,108 @@ export function Navbar() {
         {/* Desktop Navigation Links */}
         <nav
           aria-label="Desktop Navigation"
-          className="hidden items-center gap-6 md:flex"
+          className="hidden items-center gap-1.5 md:flex"
         >
-          <Link
-            href="/services"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1.5 py-1"
-          >
-            Services
-          </Link>
-          <Link
-            href="/dashboard"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1.5 py-1"
-          >
-            Dashboard
-          </Link>
-          {user && !isAdmin && (
+          {isAdmin ? (
             <>
               <Link
-                href="/dashboard/appointments"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1.5 py-1"
+                href="/dashboard/admin"
+                className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  isAdminRouteActive("/dashboard/admin")
+                    ? "bg-rose-100 text-rose-900 font-semibold border border-rose-200"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
               >
-                My Appointments
+                Overview
               </Link>
               <Link
-                href="/dashboard/payments"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1.5 py-1"
+                href="/dashboard/admin/services"
+                className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  isAdminRouteActive("/dashboard/admin/services")
+                    ? "bg-rose-100 text-rose-900 font-semibold border border-rose-200"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
               >
-                Payment History
+                Manage Services
+              </Link>
+              <Link
+                href="/dashboard/admin/appointments"
+                className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  isAdminRouteActive("/dashboard/admin/appointments")
+                    ? "bg-rose-100 text-rose-900 font-semibold border border-rose-200"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                Manage Appointments
+              </Link>
+              <Link
+                href="/dashboard/admin/users"
+                className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  isAdminRouteActive("/dashboard/admin/users")
+                    ? "bg-rose-100 text-rose-900 font-semibold border border-rose-200"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                Manage Customers
+              </Link>
+              <Link
+                href="/dashboard/admin/transactions"
+                className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  isAdminRouteActive("/dashboard/admin/transactions")
+                    ? "bg-rose-100 text-rose-900 font-semibold border border-rose-200"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                Transactions
               </Link>
             </>
-          )}
-          {isAdmin && (
-            <Link
-              href="/dashboard/admin/services"
-              className="inline-flex items-center gap-1 rounded bg-accent/70 px-2 py-0.5 text-xs font-semibold text-accent-foreground hover:bg-accent transition-colors"
-            >
-              <Shield className="h-3 w-3" />
-              <span>Admin Services</span>
-            </Link>
+          ) : (
+            <>
+              <Link
+                href="/services"
+                className={`text-sm font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-2 py-1 ${
+                  isCustomerRouteActive("/services")
+                    ? "text-primary font-semibold"
+                    : "text-muted-foreground"
+                }`}
+              >
+                Services
+              </Link>
+              <Link
+                href="/dashboard"
+                className={`text-sm font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-2 py-1 ${
+                  isCustomerRouteActive("/dashboard")
+                    ? "text-primary font-semibold"
+                    : "text-muted-foreground"
+                }`}
+              >
+                Dashboard
+              </Link>
+              {user && (
+                <>
+                  <Link
+                    href="/dashboard/appointments"
+                    className={`text-sm font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-2 py-1 ${
+                      isCustomerRouteActive("/dashboard/appointments")
+                        ? "text-primary font-semibold"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    My Appointments
+                  </Link>
+                  <Link
+                    href="/dashboard/payments"
+                    className={`text-sm font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-2 py-1 ${
+                      isCustomerRouteActive("/dashboard/payments")
+                        ? "text-primary font-semibold"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    Payment History
+                  </Link>
+                </>
+              )}
+            </>
           )}
         </nav>
 
@@ -133,7 +211,7 @@ export function Navbar() {
             <div className="flex items-center gap-3">
               {/* User Profile Badge */}
               <Link
-                href="/dashboard"
+                href={isAdmin ? "/dashboard/admin" : "/dashboard"}
                 className="flex items-center gap-2 rounded-full border border-border bg-card py-1 pr-3 pl-1.5 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 {user.image ? (
@@ -175,12 +253,14 @@ export function Navbar() {
                 <span>Logout</span>
               </Button>
 
-              {/* Book Appointment CTA */}
-              <Link href="/services">
-                <Button variant="primary" size="sm">
-                  Book Now
-                </Button>
-              </Link>
+              {/* Action CTA: Only show Book Now for non-admins */}
+              {!isAdmin && (
+                <Link href="/services">
+                  <Button variant="primary" size="sm">
+                    Book Now
+                  </Button>
+                </Link>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-3">
@@ -200,11 +280,19 @@ export function Navbar() {
 
         {/* Mobile Header Right */}
         <div className="flex items-center gap-2 md:hidden">
-          <Link href="/services">
-            <Button variant="primary" size="sm" className="h-8 px-2.5 text-xs">
-              Book Now
-            </Button>
-          </Link>
+          {isAdmin ? (
+            <Link href="/dashboard/admin">
+              <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs text-rose-800 border-rose-200">
+                Admin
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/services">
+              <Button variant="primary" size="sm" className="h-8 px-2.5 text-xs">
+                Book Now
+              </Button>
+            </Link>
+          )}
 
           <button
             type="button"
@@ -248,62 +336,140 @@ export function Navbar() {
                   <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
                 </div>
               </div>
-              <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground uppercase shrink-0">
-                {user.role || "customer"}
+              <span
+                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase shrink-0 ${
+                  isAdmin
+                    ? "bg-rose-100 text-rose-800"
+                    : "bg-accent text-accent-foreground"
+                }`}
+              >
+                {isAdmin ? "Admin" : user.role || "customer"}
               </span>
             </div>
           )}
 
           {/* Navigation links */}
           <div className="flex flex-col space-y-1">
-            <Link
-              href="/"
-              onClick={() => setIsOpen(false)}
-              className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-            >
-              Home
-            </Link>
-            <Link
-              href="/services"
-              onClick={() => setIsOpen(false)}
-              className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-            >
-              Services
-            </Link>
-            <Link
-              href="/dashboard"
-              onClick={() => setIsOpen(false)}
-              className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-            >
-              Dashboard
-            </Link>
-            {user && !isAdmin && (
+            {isAdmin ? (
               <>
                 <Link
-                  href="/dashboard/appointments"
+                  href="/dashboard/admin"
                   onClick={() => setIsOpen(false)}
-                  className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    isAdminRouteActive("/dashboard/admin")
+                      ? "bg-rose-100 text-rose-900 font-semibold"
+                      : "text-foreground hover:bg-muted"
+                  }`}
                 >
-                  My Appointments
+                  Overview
                 </Link>
                 <Link
-                  href="/dashboard/payments"
+                  href="/dashboard/admin/services"
                   onClick={() => setIsOpen(false)}
-                  className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    isAdminRouteActive("/dashboard/admin/services")
+                      ? "bg-rose-100 text-rose-900 font-semibold"
+                      : "text-foreground hover:bg-muted"
+                  }`}
                 >
-                  Payment History
+                  Manage Services
+                </Link>
+                <Link
+                  href="/dashboard/admin/appointments"
+                  onClick={() => setIsOpen(false)}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    isAdminRouteActive("/dashboard/admin/appointments")
+                      ? "bg-rose-100 text-rose-900 font-semibold"
+                      : "text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Manage Appointments
+                </Link>
+                <Link
+                  href="/dashboard/admin/users"
+                  onClick={() => setIsOpen(false)}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    isAdminRouteActive("/dashboard/admin/users")
+                      ? "bg-rose-100 text-rose-900 font-semibold"
+                      : "text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Manage Customers
+                </Link>
+                <Link
+                  href="/dashboard/admin/transactions"
+                  onClick={() => setIsOpen(false)}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    isAdminRouteActive("/dashboard/admin/transactions")
+                      ? "bg-rose-100 text-rose-900 font-semibold"
+                      : "text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Transactions
                 </Link>
               </>
-            )}
-            {isAdmin && (
-              <Link
-                href="/dashboard/admin/services"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-rose-800 hover:bg-rose-50 transition-colors"
-              >
-                <Shield className="h-4 w-4" />
-                <span>Admin Services Management</span>
-              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/"
+                  onClick={() => setIsOpen(false)}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    isCustomerRouteActive("/")
+                      ? "bg-accent text-accent-foreground font-semibold"
+                      : "text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Home
+                </Link>
+                <Link
+                  href="/services"
+                  onClick={() => setIsOpen(false)}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    isCustomerRouteActive("/services")
+                      ? "bg-accent text-accent-foreground font-semibold"
+                      : "text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Services
+                </Link>
+                <Link
+                  href="/dashboard"
+                  onClick={() => setIsOpen(false)}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    isCustomerRouteActive("/dashboard")
+                      ? "bg-accent text-accent-foreground font-semibold"
+                      : "text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Dashboard
+                </Link>
+                {user && (
+                  <>
+                    <Link
+                      href="/dashboard/appointments"
+                      onClick={() => setIsOpen(false)}
+                      className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                        isCustomerRouteActive("/dashboard/appointments")
+                          ? "bg-accent text-accent-foreground font-semibold"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      My Appointments
+                    </Link>
+                    <Link
+                      href="/dashboard/payments"
+                      onClick={() => setIsOpen(false)}
+                      className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                        isCustomerRouteActive("/dashboard/payments")
+                          ? "bg-accent text-accent-foreground font-semibold"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      Payment History
+                    </Link>
+                  </>
+                )}
+              </>
             )}
           </div>
 
@@ -311,15 +477,17 @@ export function Navbar() {
           <div className="mt-4 pt-4 border-t border-border flex flex-col gap-2.5">
             {user ? (
               <>
-                <Link
-                  href="/services"
-                  onClick={() => setIsOpen(false)}
-                  className="w-full"
-                >
-                  <Button variant="primary" size="md" className="w-full">
-                    Book Appointment
-                  </Button>
-                </Link>
+                {!isAdmin && (
+                  <Link
+                    href="/services"
+                    onClick={() => setIsOpen(false)}
+                    className="w-full"
+                  >
+                    <Button variant="primary" size="md" className="w-full">
+                      Book Appointment
+                    </Button>
+                  </Link>
+                )}
                 <Button
                   variant="outline"
                   size="md"

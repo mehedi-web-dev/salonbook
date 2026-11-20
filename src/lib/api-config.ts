@@ -36,4 +36,15 @@ export const API_ENDPOINTS = {
     MY: `${API_BASE_URL}/api/payments/my`,
     MY_BY_ID: (id: string) => `${API_BASE_URL}/api/payments/my/${id}`,
   },
+  ADMIN: {
+    STATS: `${API_BASE_URL}/api/admin/dashboard/stats`,
+    USERS: `${API_BASE_URL}/api/admin/users`,
+    USER_BY_ID: (id: string) => `${API_BASE_URL}/api/admin/users/${id}`,
+    USER_STATUS: (id: string) => `${API_BASE_URL}/api/admin/users/${id}/status`,
+    TRANSACTIONS: `${API_BASE_URL}/api/admin/transactions`,
+    TRANSACTION_BY_ID: (id: string) => `${API_BASE_URL}/api/admin/transactions/${id}`,
+    APPOINTMENTS: `${API_BASE_URL}/api/appointments`,
+    APPOINTMENT_BY_ID: (id: string) => `${API_BASE_URL}/api/appointments/${id}`,
+    APPOINTMENT_STATUS: (id: string) => `${API_BASE_URL}/api/appointments/${id}/status`,
+  },
 } as const;

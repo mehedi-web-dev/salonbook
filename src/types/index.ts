@@ -220,3 +220,132 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
 }
+
+// ==========================================
+// Admin Dashboard, User & Transaction Types
+// ==========================================
+
+export interface RevenueByCurrencyItem {
+  currency: string;
+  totalAmount: number;
+  count: number;
+}
+
+export interface AdminDashboardStats {
+  customers: {
+    total: number;
+    active: number;
+    blocked: number;
+  };
+  services: {
+    total: number;
+    active: number;
+    inactive: number;
+  };
+  appointments: {
+    total: number;
+    pending: number;
+    confirmed: number;
+    cancelled: number;
+  };
+  transactions: {
+    total: number;
+    paid: number;
+    failed: number;
+    reconciliationRequired: number;
+  };
+  revenue: {
+    byCurrency: RevenueByCurrencyItem[];
+    summary: Record<string, number>;
+  };
+}
+
+export interface AdminDashboardStatsResponse {
+  success: boolean;
+  data: AdminDashboardStats;
+}
+
+export interface AdminUser {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  isBlocked: boolean;
+  phone?: string;
+  image?: string;
+  emailVerified?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  stats?: {
+    totalAppointments: number;
+    totalTransactions: number;
+  };
+}
+
+export interface AdminUsersResponse {
+  success: boolean;
+  count: number;
+  pagination: PaginationMeta;
+  data: AdminUser[];
+}
+
+export interface SingleAdminUserResponse {
+  success: boolean;
+  message?: string;
+  data: AdminUser;
+}
+
+export interface AdminTransactionCustomer {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+}
+
+export interface AdminTransactionAppointment {
+  _id: string;
+  appointmentDate: string;
+  timeSlot: string;
+  status: string;
+  serviceId: string;
+  serviceName: string;
+  servicePrice: number;
+  service?: {
+    _id: string;
+    name: string;
+    slug?: string;
+    category: string;
+    price: number;
+    duration: number;
+  } | null;
+}
+
+export interface AdminTransaction {
+  _id: string;
+  appointmentId: string;
+  customerId: string;
+  stripeSessionId?: string;
+  stripePaymentIntentId?: string;
+  amount: number;
+  currency: string;
+  status: TransactionStatus;
+  paymentMethod?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  customer?: AdminTransactionCustomer | null;
+  appointment?: AdminTransactionAppointment | null;
+}
+
+export interface AdminTransactionsResponse {
+  success: boolean;
+  count: number;
+  pagination: PaginationMeta;
+  data: AdminTransaction[];
+}
+
+export interface SingleAdminTransactionResponse {
+  success: boolean;
+  message?: string;
+  data: AdminTransaction;
+}

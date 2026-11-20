@@ -29,11 +29,15 @@ export default function DashboardPage() {
   const [recentAppointments, setRecentAppointments] = useState<Appointment[]>([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
 
-  // Redirect to login if unauthenticated once check finishes
+  // Redirect to login if unauthenticated once check finishes; redirect admin to admin overview
   useEffect(() => {
-    if (!isPending && !session?.user) {
-      toast.info("Please sign in to access your dashboard");
-      router.replace("/login");
+    if (!isPending) {
+      if (!session?.user) {
+        toast.info("Please sign in to access your dashboard");
+        router.replace("/login");
+      } else if (session.user.role === "admin") {
+        router.replace("/dashboard/admin");
+      }
     }
   }, [isPending, session, router]);
 
