@@ -4,10 +4,12 @@ import { API_BASE_URL } from "./api-config";
 
 /**
  * Better Auth client configuration for SalonBook frontend.
- * Centralizes cross-origin credentials and custom user field typing.
+ * Explicitly binds to the centralized API_BASE_URL (production or local dev).
+ * Cross-origin credentials: "include" preserved for session cookies.
  */
 export const authClient = createAuthClient({
   baseURL: API_BASE_URL,
+  basePath: "/api/auth",
   fetchOptions: {
     credentials: "include",
   },
