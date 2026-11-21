@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search,
   X,
@@ -17,14 +18,14 @@ import { ServiceCard } from "@/components/services/service-card";
 import { fetchServices } from "@/lib/services-api";
 import type { Service, PaginationMeta } from "@/types";
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   "All",
   "Hair",
-  "Skin Care",
-  "Nails",
-  "Spa & Massage",
+  "Color & Treatment",
   "Bridal",
-  "Makeup",
+  "Spa",
+  "Nails",
+  "Skin",
 ];
 
 const SORT_OPTIONS = [
@@ -35,7 +36,11 @@ const SORT_OPTIONS = [
   { value: "name_desc", label: "Name: Z to A" },
 ];
 
-export default function ServicesPage() {
+function ServicesContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const selectedCategory = searchParams.get("category") || "All";
+
   const [services, setServices] = useState<Service[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta>({
     total: 0,
@@ -49,7 +54,6 @@ export default function ServicesPage() {
   // Filter States
   const [searchInput, setSearchInput] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedSort, setSelectedSort] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -142,8 +146,12 @@ export default function ServicesPage() {
 
   const handleCategorySelect = (category: string) => {
     setIsLoading(true);
-    setSelectedCategory(category);
     setCurrentPage(1);
+    if (category === "All") {
+      router.replace("/services", { scroll: false });
+    } else {
+      router.replace(`/services?category=${encodeURIComponent(category)}`, { scroll: false });
+    }
   };
 
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -156,10 +164,17 @@ export default function ServicesPage() {
     setSearchInput("");
     setIsLoading(true);
     setActiveSearch("");
-    setSelectedCategory("All");
     setSelectedSort("");
     setCurrentPage(1);
+    router.replace("/services", { scroll: false });
   };
+
+  const categoriesList = Array.from(
+    new Set([
+      ...DEFAULT_CATEGORIES,
+      ...(selectedCategory && selectedCategory !== "All" ? [selectedCategory] : []),
+    ])
+  );
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-12 sm:px-6">
@@ -190,8 +205,9 @@ export default function ServicesPage() {
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search services by name..."
-              className="w-full rounded-md border border-border bg-card py-2.5 pr-10 pl-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary shadow-xs"
+              placeholder="Search services by title or description..."
+              aria-label="Search services"
+              className="w-full rounded-md border border-border bg-card py-2.5 pl-10 pr-10 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary shadow-xs"
             />
             {searchInput && (
               <button
@@ -230,7 +246,7 @@ export default function ServicesPage() {
       {/* Category Filter Pills */}
       <div className="mb-8 overflow-x-auto pb-2 scrollbar-none">
         <div className="flex items-center gap-2 min-w-max">
-          {CATEGORIES.map((cat) => {
+          {categoriesList.map((cat) => {
             const isActive = selectedCategory === cat;
             return (
               <button
@@ -268,73 +284,46 @@ export default function ServicesPage() {
                 <div className="h-3.5 w-full rounded bg-muted mb-1.5" />
                 <div className="h-3.5 w-4/5 rounded bg-muted" />
               </div>
-              <div className="pt-4 border-t border-border">
-                <div className="h-9 w-full rounded bg-muted" />
-              </div>
+              <div className="h-9 w-full rounded-md bg-muted mt-4" />
             </div>
           ))}
         </div>
       ) : error ? (
         /* Error State */
-        <div className="rounded-lg border border-rose-200 bg-rose-50/70 p-10 text-center my-6">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-700 mb-3">
-            <AlertCircle className="h-6 w-6" />
-          </div>
-          <h2 className="text-base font-semibold text-rose-900">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-destructive/20 bg-destructive/5 p-8 text-center my-8">
+          <AlertCircle className="h-10 w-10 text-destructive mb-3" />
+          <h3 className="font-serif text-lg font-semibold text-foreground mb-1">
             Unable to Load Services
-          </h2>
-          <p className="mt-1 text-xs text-rose-800 max-w-md mx-auto">
-            {error}
-          </p>
-          <div className="mt-5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRetry}
-              className="gap-2 border-rose-300 text-rose-900 hover:bg-rose-100"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              <span>Retry Request</span>
-            </Button>
-          </div>
+          </h3>
+          <p className="text-sm text-muted-foreground max-w-md mb-6">{error}</p>
+          <Button onClick={handleRetry} variant="outline" size="sm" className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            <span>Try Again</span>
+          </Button>
         </div>
       ) : services.length === 0 ? (
         /* Empty State */
-        <div className="rounded-lg border border-dashed border-border bg-card/60 p-12 text-center my-6">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground mb-3">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card/60 p-12 text-center my-8">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground mb-4">
             <FilterX className="h-6 w-6" />
           </div>
-          <h2 className="font-serif text-lg font-semibold text-foreground">
+          <h3 className="font-serif text-lg font-semibold text-foreground mb-1">
             No Services Found
-          </h2>
-          <p className="mt-1 text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
+          </h3>
+          <p className="text-sm text-muted-foreground max-w-md mb-6">
             {activeSearch || selectedCategory !== "All"
-              ? "We couldn't find any services matching your criteria. Try adjusting your search term or selected category."
-              : "No active salon services are currently cataloged. Please check back shortly."}
+              ? "We couldn't find any services matching your criteria. Try adjusting your filters or search terms."
+              : "There are currently no active services listed. Please check back soon."}
           </p>
           {(activeSearch || selectedCategory !== "All" || selectedSort) && (
-            <div className="mt-6">
-              <Button variant="outline" size="sm" onClick={handleResetAll}>
-                Reset Search &amp; Filters
-              </Button>
-            </div>
+            <Button onClick={handleResetAll} variant="outline" size="sm">
+              Reset Filters
+            </Button>
           )}
         </div>
       ) : (
         /* Services Grid */
         <>
-          <div className="mb-4 flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              Showing {services.length} of {pagination.total} service
-              {pagination.total === 1 ? "" : "s"}
-            </span>
-            {activeSearch && (
-              <span className="italic">
-                Results for &ldquo;{activeSearch}&rdquo;
-              </span>
-            )}
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {services.map((service) => (
               <ServiceCard key={service._id} service={service} />
@@ -371,7 +360,7 @@ export default function ServicesPage() {
                     setIsLoading(true);
                     setCurrentPage((p) =>
                       Math.min(pagination.totalPages, p + 1)
-                    )
+                    );
                   }}
                   disabled={currentPage >= pagination.totalPages || isLoading}
                   className="gap-1 text-xs"
@@ -385,5 +374,31 @@ export default function ServicesPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function ServicesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto max-w-6xl px-4 py-12 sm:px-6">
+          <div className="mx-auto max-w-2xl text-center mb-10">
+            <div className="h-6 w-36 bg-muted animate-pulse rounded-full mx-auto mb-4" />
+            <div className="h-10 w-64 bg-muted animate-pulse rounded mx-auto mb-3" />
+            <div className="h-4 w-96 bg-muted animate-pulse rounded mx-auto" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-80 rounded-lg border border-border bg-card p-5 animate-pulse"
+              />
+            ))}
+          </div>
+        </div>
+      }
+    >
+      <ServicesContent />
+    </Suspense>
   );
 }
