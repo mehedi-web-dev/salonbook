@@ -184,6 +184,16 @@ export function Navbar() {
                 About
               </Link>
               <Link
+                href="/contact"
+                className={`text-sm font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-2 py-1 ${
+                  pathname === "/contact"
+                    ? "text-primary font-semibold"
+                    : "text-muted-foreground"
+                }`}
+              >
+                Contact
+              </Link>
+              <Link
                 href="/dashboard"
                 className={`text-sm font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-2 py-1 ${
                   isCustomerRouteActive("/dashboard")
@@ -484,6 +494,17 @@ export function Navbar() {
                   }`}
                 >
                   About
+                </Link>
+                <Link
+                  href="/contact"
+                  onClick={() => setIsOpen(false)}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    pathname === "/contact"
+                      ? "bg-accent text-accent-foreground font-semibold"
+                      : "text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Contact
                 </Link>
                 <Link
                   href="/dashboard"
