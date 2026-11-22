@@ -1,14 +1,16 @@
 import { createAuthClient } from "better-auth/react";
 import { inferAdditionalFields } from "better-auth/client/plugins";
-import { API_BASE_URL } from "./api-config";
+import { getAuthClientBaseUrl } from "./api-config";
+
+export { getAuthClientBaseUrl };
 
 /**
  * Better Auth client configuration for SalonBook frontend.
- * Explicitly binds to the centralized API_BASE_URL (production or local dev).
- * Cross-origin credentials: "include" preserved for session cookies.
+ * Bound to same-origin /api/auth proxy in production.
+ * First-party credentials: "include" preserved for session cookies.
  */
 export const authClient = createAuthClient({
-  baseURL: API_BASE_URL,
+  baseURL: getAuthClientBaseUrl(),
   basePath: "/api/auth",
   fetchOptions: {
     credentials: "include",

@@ -1,18 +1,28 @@
 /**
  * Centralized API configuration for SalonBook frontend.
  * 
- * Production Backend: https://salonbook-server-roan.vercel.app
- * Local Development:  http://localhost:5000
+ * Same-Origin Authentication & API Proxy Architecture:
+ * - Production Frontend: https://salonbook-virid.vercel.app
+ * - Production Backend:  https://salonbook-server-roan.vercel.app
+ * - Local Development:   http://localhost:5000 (proxied via Next.js or direct)
  * 
- * Rules:
- * 1. Production builds and deployed runtimes must NEVER fall back to localhost.
- * 2. Explicit environment variables (NEXT_PUBLIC_SERVER_BASE_URL / NEXT_PUBLIC_API_URL)
- *    are prioritized, with safeguards preventing accidental localhost usage in production.
- * 3. Local development defaults to http://localhost:5000.
+ * Architecture Rules:
+ * 1. In production, browser requests for Better Auth (/api/auth/*) and REST APIs (/api/*)
+ *    route to the SAME-ORIGIN frontend (https://salonbook-virid.vercel.app).
+ * 2. Next.js rewrites proxy these requests to the authoritative backend (https://salonbook-server-roan.vercel.app).
+ * 3. This guarantees all session cookies (better-auth.session_token, state, etc.) are 100%
+ *    FIRST-PARTY cookies on salonbook-virid.vercel.app, eliminating OAuth state_mismatch
+ *    and third-party cookie restrictions.
+ * 4. In local development, requests route to local backend (http://localhost:5000).
  */
 
-export const PRODUCTION_API_URL = "https://salonbook-server-roan.vercel.app";
-export const LOCAL_API_URL = "http://localhost:5000";
+export const PRODUCTION_FRONTEND_URL = "https://salonbook-virid.vercel.app";
+export const PRODUCTION_BACKEND_URL = "https://salonbook-server-roan.vercel.app";
+export const LOCAL_DEV_URL = "http://localhost:5000";
+
+// Backward-compatible exports
+export const PRODUCTION_API_URL = PRODUCTION_FRONTEND_URL;
+export const LOCAL_API_URL = LOCAL_DEV_URL;
 
 /**
  * Detects whether the current execution context is in production.
@@ -72,43 +82,70 @@ export function sanitizeApiUrl(url: string): string {
 }
 
 /**
- * Resolves the authoritative backend API base URL with production safeguards.
+ * Resolves the base URL for frontend API calls.
  * 
- * Priority:
- * 1. Explicit environment variable (NEXT_PUBLIC_SERVER_BASE_URL or NEXT_PUBLIC_API_URL).
- *    - In production: If the env var points to localhost or is invalid, safely overrides
- *      with PRODUCTION_API_URL to prevent production breakage.
- *    - In development: Respects local or custom dev URL.
- * 2. Unset environment variable:
- *    - In production: Strictly defaults to PRODUCTION_API_URL (never localhost).
- *    - In development: Defaults to LOCAL_API_URL (http://localhost:5000).
+ * - In production:
+ *   - Browser runtime uses same-origin window.location.origin (https://salonbook-virid.vercel.app)
+ *   - SSR / build-time falls back to PRODUCTION_FRONTEND_URL (https://salonbook-virid.vercel.app)
+ *   - Next.js rewrites proxy /api/auth/* and /api/* to PRODUCTION_BACKEND_URL
+ * - In development:
+ *   - Uses local backend at http://localhost:5000
  */
 export function resolveApiBaseUrl(): string {
   const isProd = isProductionEnvironment();
 
-  // Read statically so Next.js build-time inlining works as expected
-  const rawEnv =
-    process.env.NEXT_PUBLIC_SERVER_BASE_URL ||
-    process.env.NEXT_PUBLIC_API_URL;
-
-  if (rawEnv && rawEnv.trim()) {
-    const sanitized = sanitizeApiUrl(rawEnv);
-    if (isProd && isLocalhostUrl(sanitized)) {
-      if (typeof console !== "undefined" && console.warn) {
-        console.warn(
-          `[SalonBook API] Warning: Localhost API URL ("${sanitized}") detected in production environment. Safely overriding with production backend: ${PRODUCTION_API_URL}`
-        );
+  if (isProd) {
+    // 1. Browser runtime in production: always same-origin
+    if (typeof window !== "undefined" && window.location?.origin) {
+      const origin = window.location.origin;
+      if (!isLocalhostUrl(origin)) {
+        return sanitizeApiUrl(origin);
       }
-      return PRODUCTION_API_URL;
     }
-    return sanitized;
+
+    // 2. Explicit app URL if defined
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (appUrl && appUrl.trim() && !isLocalhostUrl(appUrl)) {
+      return sanitizeApiUrl(appUrl);
+    }
+
+    // 3. Fallback canonical production frontend origin
+    return PRODUCTION_FRONTEND_URL;
   }
 
-  return isProd ? PRODUCTION_API_URL : LOCAL_API_URL;
+  // Local development
+  const rawEnv =
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.NEXT_PUBLIC_SERVER_BASE_URL;
+
+  if (rawEnv && rawEnv.trim()) {
+    return sanitizeApiUrl(rawEnv);
+  }
+
+  return LOCAL_DEV_URL;
 }
 
 /**
- * Global API base URL used across all API client utilities and Better Auth.
+ * Resolves the baseURL for Better Auth client in the same-origin proxy architecture.
+ * - In production browser: resolves to window.location.origin (same-origin, e.g. https://salonbook-virid.vercel.app)
+ * - In production SSR: resolves to canonical frontend origin (https://salonbook-virid.vercel.app)
+ * - In local development: resolves to local API_BASE_URL (http://localhost:5000 or http://localhost:3000)
+ * 
+ * Never targets the production backend directly (https://salonbook-server-roan.vercel.app),
+ * ensuring all authentication requests traverse the Next.js reverse-proxy rewrite at /api/auth/*.
+ */
+export function getAuthClientBaseUrl(): string {
+  if (typeof window !== "undefined" && window.location?.origin) {
+    const origin = window.location.origin;
+    if (!isLocalhostUrl(origin)) {
+      return sanitizeApiUrl(origin);
+    }
+  }
+  return isProductionEnvironment() ? PRODUCTION_FRONTEND_URL : LOCAL_DEV_URL;
+}
+
+/**
+ * Global API base URL used across all API client utilities.
  */
 export const API_BASE_URL: string = resolveApiBaseUrl();
 
