@@ -7,13 +7,10 @@ import {
   Sparkles,
   Calendar,
   CreditCard,
-  DollarSign,
   AlertCircle,
   RefreshCw,
-  Clock,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
   ArrowRight,
   Shield,
   Tag,
@@ -21,23 +18,60 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminGuard } from "@/components/admin/admin-guard";
-import { getAdminDashboardStats } from "@/lib/admin-api";
-import type { AdminDashboardStats } from "@/types";
+import {
+  getAdminDashboardStats,
+  getAdminAppointments,
+  getAdminTransactions,
+} from "@/lib/admin-api";
+import type { AdminDashboardStats, Appointment, AdminTransaction } from "@/types";
+import {
+  groupAppointmentsByMonth,
+  formatCurrency,
+} from "@/lib/analytics-utils";
+import { StatCard } from "@/components/analytics/stat-card";
+import { StatusDistributionChart } from "@/components/analytics/status-distribution-chart";
+import { MonthlyTrendChart } from "@/components/analytics/monthly-trend-chart";
+import { RevenueOverviewChart } from "@/components/analytics/revenue-overview-chart";
+import { RecentActivityList } from "@/components/analytics/recent-activity-list";
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const fetchStats = async () => {
+  const fetchDashboardData = async () => {
     setIsLoading(true);
     setErrorMessage(null);
+
     try {
-      const data = await getAdminDashboardStats();
-      setStats(data);
+      const [statsRes, appRes, txRes] = await Promise.allSettled([
+        getAdminDashboardStats(),
+        getAdminAppointments({ limit: 100 }),
+        getAdminTransactions({ limit: 5 }),
+      ]);
+
+      if (statsRes.status === "fulfilled") {
+        setStats(statsRes.value);
+      } else {
+        const message =
+          statsRes.reason instanceof Error
+            ? statsRes.reason.message
+            : "Failed to load dashboard statistics";
+        setErrorMessage(message);
+      }
+
+      if (appRes.status === "fulfilled" && appRes.value?.data) {
+        setAppointments(appRes.value.data);
+      }
+
+      if (txRes.status === "fulfilled" && txRes.value?.data) {
+        setTransactions(txRes.value.data);
+      }
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : "Failed to load dashboard statistics";
+        err instanceof Error ? err.message : "Failed to load administrative statistics";
       setErrorMessage(message);
     } finally {
       setIsLoading(false);
@@ -46,10 +80,34 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     let isCurrent = true;
-    const load = async () => {
+
+    const loadInitial = async () => {
       try {
-        const data = await getAdminDashboardStats();
-        if (isCurrent) setStats(data);
+        const [statsRes, appRes, txRes] = await Promise.allSettled([
+          getAdminDashboardStats(),
+          getAdminAppointments({ limit: 100 }),
+          getAdminTransactions({ limit: 5 }),
+        ]);
+
+        if (isCurrent) {
+          if (statsRes.status === "fulfilled") {
+            setStats(statsRes.value);
+          } else {
+            const message =
+              statsRes.reason instanceof Error
+                ? statsRes.reason.message
+                : "Failed to load dashboard statistics";
+            setErrorMessage(message);
+          }
+
+          if (appRes.status === "fulfilled" && appRes.value?.data) {
+            setAppointments(appRes.value.data);
+          }
+
+          if (txRes.status === "fulfilled" && txRes.value?.data) {
+            setTransactions(txRes.value.data);
+          }
+        }
       } catch (err: unknown) {
         if (isCurrent) {
           const message =
@@ -60,11 +118,40 @@ export default function AdminDashboardPage() {
         if (isCurrent) setIsLoading(false);
       }
     };
-    load();
+
+    loadInitial();
+
     return () => {
       isCurrent = false;
     };
   }, []);
+
+  // Compute monthly trends from real appointment records
+  const monthlyBuckets = groupAppointmentsByMonth(appointments);
+
+  // Map recent appointments for the activity list
+  const recentAppointmentItems = appointments.slice(0, 5).map((app) => ({
+    id: app._id,
+    title: app.service?.name || "Salon Treatment",
+    subtitle: `${app.appointmentDate} at ${app.timeSlot}`,
+    timestamp: app.createdAt ? new Date(app.createdAt).toLocaleDateString() : app.appointmentDate,
+    amount: `$${app.servicePrice}`,
+    status: app.status,
+    badgeLabel: app.status,
+    href: "/dashboard/admin/appointments",
+  }));
+
+  // Map recent transactions for the activity list
+  const recentTransactionItems = transactions.slice(0, 5).map((tx) => ({
+    id: tx._id,
+    title: tx.customer?.name || tx.customer?.email || "Customer Checkout",
+    subtitle: tx.appointment?.serviceName || "Service Payment",
+    timestamp: tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : "Recent",
+    amount: formatCurrency(tx.amount, tx.currency),
+    status: tx.status,
+    badgeLabel: tx.status === "paid" ? "Paid" : tx.status === "failed" ? "Failed" : "Review",
+    href: "/dashboard/admin/transactions",
+  }));
 
   return (
     <AdminGuard>
@@ -103,7 +190,7 @@ export default function AdminDashboardPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={fetchStats}
+              onClick={fetchDashboardData}
               disabled={isLoading}
               className="gap-1.5 text-xs"
             >
@@ -145,7 +232,7 @@ export default function AdminDashboardPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={fetchStats}
+                    onClick={fetchDashboardData}
                     className="mt-3 gap-1.5 text-xs border-rose-300 text-rose-900 hover:bg-rose-100"
                   >
                     <RefreshCw className="h-3 w-3" />
@@ -241,283 +328,144 @@ export default function AdminDashboardPage() {
               {/* Top Operational Metrics KPI Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Customers Metric */}
-                <div className="rounded-xl border border-border bg-card p-5 shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Customers
-                    </span>
-                    <div className="rounded-md bg-accent/60 p-1.5 text-accent-foreground">
-                      <Users className="h-4 w-4 text-primary" />
+                <StatCard
+                  title="Registered Customers"
+                  value={stats.customers.total}
+                  subtitle="Active client accounts"
+                  icon={Users}
+                  accentColor="primary"
+                  footer={
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1 text-emerald-800 font-medium">
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span>{stats.customers.active} Active</span>
+                      </span>
+                      <span className="flex items-center gap-1 text-rose-800 font-medium">
+                        <XCircle className="h-3 w-3" />
+                        <span>{stats.customers.blocked} Blocked</span>
+                      </span>
                     </div>
-                  </div>
-                  <div className="mt-3 font-serif text-3xl font-bold text-foreground">
-                    {stats.customers.total}
-                  </div>
-                  <div className="mt-3 flex items-center justify-between text-xs border-t border-border pt-2 text-muted-foreground">
-                    <span className="flex items-center gap-1 text-emerald-800 font-medium">
-                      <CheckCircle2 className="h-3 w-3" />
-                      <span>{stats.customers.active} Active</span>
-                    </span>
-                    <span className="flex items-center gap-1 text-rose-800 font-medium">
-                      <XCircle className="h-3 w-3" />
-                      <span>{stats.customers.blocked} Blocked</span>
-                    </span>
-                  </div>
-                </div>
+                  }
+                />
 
                 {/* Services Metric */}
-                <div className="rounded-xl border border-border bg-card p-5 shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Services Catalog
-                    </span>
-                    <div className="rounded-md bg-accent/60 p-1.5 text-accent-foreground">
-                      <Sparkles className="h-4 w-4 text-primary" />
+                <StatCard
+                  title="Services Catalog"
+                  value={stats.services.total}
+                  subtitle="Treatment offerings"
+                  icon={Sparkles}
+                  accentColor="primary"
+                  footer={
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1 text-emerald-800 font-medium">
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span>{stats.services.active} Live</span>
+                      </span>
+                      <span className="flex items-center gap-1 text-muted-foreground font-medium">
+                        <Tag className="h-3 w-3" />
+                        <span>{stats.services.inactive} Inactive</span>
+                      </span>
                     </div>
-                  </div>
-                  <div className="mt-3 font-serif text-3xl font-bold text-foreground">
-                    {stats.services.total}
-                  </div>
-                  <div className="mt-3 flex items-center justify-between text-xs border-t border-border pt-2 text-muted-foreground">
-                    <span className="flex items-center gap-1 text-emerald-800 font-medium">
-                      <CheckCircle2 className="h-3 w-3" />
-                      <span>{stats.services.active} Available</span>
-                    </span>
-                    <span className="flex items-center gap-1 text-muted-foreground font-medium">
-                      <Tag className="h-3 w-3" />
-                      <span>{stats.services.inactive} Inactive</span>
-                    </span>
-                  </div>
-                </div>
+                  }
+                />
 
                 {/* Appointments Metric */}
-                <div className="rounded-xl border border-border bg-card p-5 shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Appointments
-                    </span>
-                    <div className="rounded-md bg-accent/60 p-1.5 text-accent-foreground">
-                      <Calendar className="h-4 w-4 text-primary" />
+                <StatCard
+                  title="Total Reservations"
+                  value={stats.appointments.total}
+                  subtitle="All client bookings"
+                  icon={Calendar}
+                  accentColor="primary"
+                  footer={
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-amber-800 font-medium">
+                        {stats.appointments.pending} Pending
+                      </span>
+                      <span className="text-emerald-800 font-medium">
+                        {stats.appointments.confirmed} Confirmed
+                      </span>
+                      <span className="text-rose-800 font-medium">
+                        {stats.appointments.cancelled} Cancelled
+                      </span>
                     </div>
-                  </div>
-                  <div className="mt-3 font-serif text-3xl font-bold text-foreground">
-                    {stats.appointments.total}
-                  </div>
-                  <div className="mt-3 flex items-center justify-between text-[11px] border-t border-border pt-2 text-muted-foreground">
-                    <span className="text-amber-800 font-medium">
-                      {stats.appointments.pending} Pending
-                    </span>
-                    <span className="text-emerald-800 font-medium">
-                      {stats.appointments.confirmed} Confirmed
-                    </span>
-                    <span className="text-rose-800 font-medium">
-                      {stats.appointments.cancelled} Cancelled
-                    </span>
-                  </div>
-                </div>
+                  }
+                />
 
                 {/* Transactions Metric */}
-                <div className="rounded-xl border border-border bg-card p-5 shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Transactions
-                    </span>
-                    <div className="rounded-md bg-accent/60 p-1.5 text-accent-foreground">
-                      <CreditCard className="h-4 w-4 text-primary" />
+                <StatCard
+                  title="Total Transactions"
+                  value={stats.transactions.total}
+                  subtitle="Stripe payment attempts"
+                  icon={CreditCard}
+                  accentColor="primary"
+                  footer={
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-emerald-800 font-medium">
+                        {stats.transactions.paid} Paid
+                      </span>
+                      <span className="text-rose-800 font-medium">
+                        {stats.transactions.failed} Failed
+                      </span>
+                      <span className="text-amber-800 font-medium">
+                        {stats.transactions.reconciliationRequired} Review
+                      </span>
                     </div>
-                  </div>
-                  <div className="mt-3 font-serif text-3xl font-bold text-foreground">
-                    {stats.transactions.total}
-                  </div>
-                  <div className="mt-3 flex items-center justify-between text-[11px] border-t border-border pt-2 text-muted-foreground">
-                    <span className="text-emerald-800 font-medium">
-                      {stats.transactions.paid} Paid
-                    </span>
-                    <span className="text-rose-800 font-medium">
-                      {stats.transactions.failed} Failed
-                    </span>
-                    <span className="text-amber-800 font-medium">
-                      {stats.transactions.reconciliationRequired} Review
-                    </span>
-                  </div>
-                </div>
+                  }
+                />
               </div>
 
               {/* Verified Revenue Section — Currency Isolated */}
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="rounded-lg bg-emerald-100 p-2 text-emerald-800">
-                      <DollarSign className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h2 className="font-serif text-lg font-semibold text-foreground">
-                        Verified Paid Revenue
-                      </h2>
-                      <p className="text-xs text-muted-foreground">
-                        Reconciled revenue from verified Stripe transactions, isolated strictly by currency.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="inline-flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1 font-medium">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span>Stripe Webhook Verified</span>
-                  </div>
-                </div>
+              <RevenueOverviewChart
+                byCurrency={stats.revenue.byCurrency}
+                transactions={stats.transactions}
+                title="Verified Paid Revenue"
+                subtitle="Reconciled revenue from verified Stripe transactions, isolated strictly by currency."
+              />
 
-                <div className="mt-6">
-                  {stats.revenue.byCurrency && stats.revenue.byCurrency.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                      {stats.revenue.byCurrency.map((rev) => {
-                        const isUsd = rev.currency.toLowerCase() === "usd";
-                        const isEur = rev.currency.toLowerCase() === "eur";
-                        const symbol = isUsd ? "$" : isEur ? "€" : rev.currency.toUpperCase() + " ";
+              {/* Operational Visualizations: Status Pipeline & Monthly Trends */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Appointment Status Pipeline */}
+                <StatusDistributionChart
+                  pending={stats.appointments.pending}
+                  confirmed={stats.appointments.confirmed}
+                  cancelled={stats.appointments.cancelled}
+                  title="Salon Reservation Pipeline"
+                  subtitle="Proportion of bookings across confirmed, pending, and cancelled stages"
+                />
 
-                        return (
-                          <div
-                            key={rev.currency}
-                            className="rounded-xl border border-border bg-secondary/20 p-5 flex flex-col justify-between"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="rounded bg-background px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-foreground border border-border">
-                                {rev.currency.toUpperCase()}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {rev.count} {rev.count === 1 ? "payment" : "payments"}
-                              </span>
-                            </div>
-
-                            <div className="mt-4">
-                              <span className="text-xs text-muted-foreground block font-medium">
-                                Total Paid Volume
-                              </span>
-                              <div className="mt-1 font-serif text-3xl font-bold text-foreground">
-                                {symbol}
-                                {Number(rev.totalAmount).toLocaleString("en-US", {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-border bg-muted/20 p-8 text-center">
-                      <DollarSign className="mx-auto h-8 w-8 text-muted-foreground/60 mb-2" />
-                      <p className="text-sm font-medium text-foreground">No verified revenue recorded yet</p>
-                      <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                        When customers complete payments via Stripe Checkout and the webhook verification processes, revenue balances will display here.
-                      </p>
-                    </div>
-                  )}
-                </div>
+                {/* Monthly Booking Trends */}
+                <MonthlyTrendChart
+                  data={monthlyBuckets}
+                  title="Salon Booking Trends"
+                  subtitle="Monthly reservation volume across the salon over the last 6 operating months"
+                />
               </div>
 
-              {/* Operational Breakdown Cards */}
+              {/* Live Feeds: Recent Appointments & Recent Transactions */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Appointment Pipeline Status */}
-                <div className="rounded-xl border border-border bg-card p-6 shadow-xs">
-                  <div className="flex items-center justify-between border-b border-border pb-4">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5 text-primary" />
-                      <h3 className="font-serif text-base font-semibold text-foreground">
-                        Appointment Pipeline
-                      </h3>
-                    </div>
-                    <Link
-                      href="/dashboard/admin/appointments"
-                      className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-                    >
-                      <span>Manage All</span>
-                      <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  </div>
+                {/* Recent Appointments */}
+                <RecentActivityList
+                  title="Latest Appointment Reservations"
+                  subtitle="Most recent bookings made by salon clients"
+                  items={recentAppointmentItems}
+                  emptyMessage="No reservations recorded yet"
+                  emptySubtext="When clients book appointments, they will be listed here."
+                  viewAllHref="/dashboard/admin/appointments"
+                  viewAllLabel="Manage All Appointments"
+                  type="appointments"
+                />
 
-                  <div className="mt-5 space-y-3">
-                    <div className="flex items-center justify-between rounded-lg border border-border bg-background p-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <Clock className="h-4 w-4 text-amber-600" />
-                        <span className="text-xs font-medium text-foreground">Pending Reservations</span>
-                      </div>
-                      <span className="font-serif text-base font-bold text-amber-900 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
-                        {stats.appointments.pending}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-lg border border-border bg-background p-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                        <span className="text-xs font-medium text-foreground">Confirmed Treatments</span>
-                      </div>
-                      <span className="font-serif text-base font-bold text-emerald-900 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                        {stats.appointments.confirmed}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-lg border border-border bg-background p-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <XCircle className="h-4 w-4 text-rose-600" />
-                        <span className="text-xs font-medium text-foreground">Cancelled Reservations</span>
-                      </div>
-                      <span className="font-serif text-base font-bold text-rose-900 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full">
-                        {stats.appointments.cancelled}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Transaction Health Status */}
-                <div className="rounded-xl border border-border bg-card p-6 shadow-xs">
-                  <div className="flex items-center justify-between border-b border-border pb-4">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-5 w-5 text-primary" />
-                      <h3 className="font-serif text-base font-semibold text-foreground">
-                        Transaction Health
-                      </h3>
-                    </div>
-                    <Link
-                      href="/dashboard/admin/transactions"
-                      className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-                    >
-                      <span>View Transactions</span>
-                      <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  </div>
-
-                  <div className="mt-5 space-y-3">
-                    <div className="flex items-center justify-between rounded-lg border border-border bg-background p-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                        <span className="text-xs font-medium text-foreground">Successfully Settled</span>
-                      </div>
-                      <span className="font-serif text-base font-bold text-emerald-900 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                        {stats.transactions.paid}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-lg border border-border bg-background p-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <XCircle className="h-4 w-4 text-rose-600" />
-                        <span className="text-xs font-medium text-foreground">Failed Authorizations</span>
-                      </div>
-                      <span className="font-serif text-base font-bold text-rose-900 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full">
-                        {stats.transactions.failed}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-lg border border-border bg-background p-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <AlertTriangle className="h-4 w-4 text-amber-600" />
-                        <span className="text-xs font-medium text-foreground">Reconciliation Required</span>
-                      </div>
-                      <span className="font-serif text-base font-bold text-amber-900 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
-                        {stats.transactions.reconciliationRequired}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                {/* Recent Transactions */}
+                <RecentActivityList
+                  title="Recent Stripe Transactions"
+                  subtitle="Latest payment attempts and checkout sessions"
+                  items={recentTransactionItems}
+                  emptyMessage="No transactions recorded yet"
+                  emptySubtext="When clients complete Stripe checkout, payments will be listed here."
+                  viewAllHref="/dashboard/admin/transactions"
+                  viewAllLabel="View All Transactions"
+                  type="transactions"
+                />
               </div>
             </>
           ) : null}
