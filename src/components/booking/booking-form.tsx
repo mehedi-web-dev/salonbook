@@ -1,37 +1,29 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Calendar as CalendarIcon,
-  Clock,
   Sparkles,
   AlertCircle,
   CheckCircle2,
   Loader2,
   ShieldAlert,
   ArrowRight,
-  Info,
+  CalendarCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/lib/auth-client";
-import { createAppointment } from "@/lib/appointments-api";
+import { createAppointment, getMyAppointments } from "@/lib/appointments-api";
+import { AppointmentCalendar } from "@/components/booking/appointment-calendar";
+import {
+  TimeSlotSelector,
+  SALON_TIME_SLOTS,
+} from "@/components/booking/time-slot-selector";
 import type { Service, Appointment } from "@/types";
 
-export const SALON_TIME_SLOTS = [
-  { value: "09:00", label: "09:00 AM" },
-  { value: "10:00", label: "10:00 AM" },
-  { value: "11:00", label: "11:00 AM" },
-  { value: "12:00", label: "12:00 PM" },
-  { value: "13:00", label: "01:00 PM" },
-  { value: "14:00", label: "02:00 PM" },
-  { value: "15:00", label: "03:00 PM" },
-  { value: "16:00", label: "04:00 PM" },
-  { value: "17:00", label: "05:00 PM" },
-  { value: "18:00", label: "06:00 PM" },
-] as const;
+export { SALON_TIME_SLOTS };
 
 interface BookingFormProps {
   service: Service;
@@ -45,11 +37,18 @@ export function BookingForm({ service }: BookingFormProps) {
   const tomorrowStr = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    return d.toISOString().split("T")[0];
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
   }, []);
 
   const todayStr = useMemo(() => {
-    return new Date().toISOString().split("T")[0];
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
   }, []);
 
   const [appointmentDate, setAppointmentDate] = useState<string>(tomorrowStr);
@@ -59,10 +58,76 @@ export function BookingForm({ service }: BookingFormProps) {
   const [conflictError, setConflictError] = useState<string | null>(null);
   const [confirmedBooking, setConfirmedBooking] = useState<Appointment | null>(null);
 
+  // In-memory record of slots confirmed as unavailable/conflicted for a given date
+  const [conflictSlotsMap, setConflictSlotsMap] = useState<Record<string, Set<string>>>({});
+
+  // Slots already booked by the current authenticated user on dates
+  const [userBookedDatesMap, setUserBookedDatesMap] = useState<Record<string, Set<string>>>({});
+
   const user = session?.user;
   const isAdmin = user?.role === "admin";
-
   const duration = service.duration ?? service.durationMinutes ?? 45;
+
+  // Retrieve customer's own active bookings to mark their own booked slots as taken
+  const refreshCustomerBookings = useCallback(async () => {
+    if (!user || isAdmin) return;
+    try {
+      const response = await getMyAppointments({ status: "all", limit: 50 });
+      if (response?.data) {
+        const bookedMap: Record<string, Set<string>> = {};
+        for (const appt of response.data) {
+          if (appt.status === "pending" || appt.status === "confirmed") {
+            const date = appt.appointmentDate;
+            if (!bookedMap[date]) {
+              bookedMap[date] = new Set();
+            }
+            bookedMap[date].add(appt.timeSlot);
+          }
+        }
+        setUserBookedDatesMap(bookedMap);
+      }
+    } catch {
+      // Non-critical background enhancement; if it fails, server validation remains authoritative
+    }
+  }, [user, isAdmin]);
+
+  useEffect(() => {
+    if (!user || isAdmin) return;
+    let isMounted = true;
+
+    getMyAppointments({ status: "all", limit: 50 })
+      .then((response) => {
+        if (isMounted && response?.data) {
+          const bookedMap: Record<string, Set<string>> = {};
+          for (const appt of response.data) {
+            if (appt.status === "pending" || appt.status === "confirmed") {
+              const date = appt.appointmentDate;
+              if (!bookedMap[date]) {
+                bookedMap[date] = new Set();
+              }
+              bookedMap[date].add(appt.timeSlot);
+            }
+          }
+          setUserBookedDatesMap(bookedMap);
+        }
+      })
+      .catch(() => {
+        // Non-blocking
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, isAdmin]);
+
+  // Current date's user-booked and conflicted slots
+  const currentUserBookedSlots = useMemo(() => {
+    return userBookedDatesMap[appointmentDate] || new Set();
+  }, [userBookedDatesMap, appointmentDate]);
+
+  const currentConflictSlots = useMemo(() => {
+    return conflictSlotsMap[appointmentDate] || new Set();
+  }, [conflictSlotsMap, appointmentDate]);
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,6 +153,12 @@ export function BookingForm({ service }: BookingFormProps) {
       return;
     }
 
+    // Check if slot was already booked by this user
+    if (currentUserBookedSlots.has(timeSlot)) {
+      toast.error("You already have an appointment booked for this slot");
+      return;
+    }
+
     setConflictError(null);
     setIsSubmitting(true);
 
@@ -101,6 +172,9 @@ export function BookingForm({ service }: BookingFormProps) {
 
       setConfirmedBooking(result);
       toast.success("Appointment booked successfully!");
+
+      // Refresh customer bookings in background
+      refreshCustomerBookings();
     } catch (err: unknown) {
       const errorMsg =
         err instanceof Error ? err.message : "Failed to book appointment";
@@ -110,6 +184,15 @@ export function BookingForm({ service }: BookingFormProps) {
         errorMsg.toLowerCase().includes("slot")
       ) {
         setConflictError(errorMsg);
+        // Record this slot as conflicted for the chosen date so UI marks it as Booked
+        setConflictSlotsMap((prev) => {
+          const currentSet = new Set(prev[appointmentDate] || []);
+          currentSet.add(timeSlot);
+          return {
+            ...prev,
+            [appointmentDate]: currentSet,
+          };
+        });
       } else {
         toast.error(errorMsg);
       }
@@ -135,7 +218,7 @@ export function BookingForm({ service }: BookingFormProps) {
               Booking Confirmed
             </h3>
             <p className="text-xs text-muted-foreground">
-              Your session reservation has been received and is pending stylist review.
+              Your reservation has been received and is pending specialist confirmation.
             </p>
           </div>
         </div>
@@ -202,8 +285,8 @@ export function BookingForm({ service }: BookingFormProps) {
         <h2 className="font-serif text-2xl font-semibold tracking-tight text-foreground">
           Schedule Your Session
         </h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Choose a preferred appointment date and time slot. Our salon specialists will confirm your booking.
+        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+          Select a date on our appointment calendar and choose your preferred time slot.
         </p>
       </div>
 
@@ -247,80 +330,47 @@ export function BookingForm({ service }: BookingFormProps) {
       )}
 
       <form onSubmit={handleBookingSubmit} className="space-y-6">
-        {/* Date Selection */}
+        {/* Step 1: Appointment Calendar (Interactive Month / Date Selection) */}
         <div>
-          <label
-            htmlFor="appointmentDate"
-            className="block text-xs font-semibold uppercase tracking-wider text-foreground mb-1.5"
-          >
-            Select Date <span className="text-primary">*</span>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-foreground mb-2">
+            1. Select Appointment Date <span className="text-primary">*</span>
           </label>
-          <div className="relative">
-            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-muted-foreground">
-              <CalendarIcon className="h-4 w-4" />
-            </span>
-            <input
-              id="appointmentDate"
-              type="date"
-              min={todayStr}
-              value={appointmentDate}
-              onChange={(e) => {
-                setAppointmentDate(e.target.value);
-                setConflictError(null);
-              }}
-              required
-              disabled={isSubmitting || isAdmin}
-              className="w-full rounded-md border border-border bg-background pl-9 pr-3.5 py-2.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            />
-          </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Please select today or an upcoming calendar date.
-          </p>
+          <AppointmentCalendar
+            selectedDate={appointmentDate}
+            onSelectDate={(newDate) => {
+              setAppointmentDate(newDate);
+              setConflictError(null);
+            }}
+            disabled={isSubmitting || isAdmin}
+          />
         </div>
 
-        {/* Time Slot Selection */}
+        {/* Step 2: Time Slot Selector (Salon Operating Hours & Availability) */}
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-foreground mb-1.5">
-            Select Time Slot (Salon Hours) <span className="text-primary">*</span>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-foreground mb-2">
+            2. Choose Available Time Slot <span className="text-primary">*</span>
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-            {SALON_TIME_SLOTS.map((slot) => {
-              const isSelected = timeSlot === slot.value;
-              return (
-                <button
-                  key={slot.value}
-                  type="button"
-                  disabled={isSubmitting || isAdmin}
-                  onClick={() => {
-                    setTimeSlot(slot.value);
-                    setConflictError(null);
-                  }}
-                  className={`flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium border transition-colors ${
-                    isSelected
-                      ? "border-primary bg-primary text-primary-foreground shadow-xs font-semibold"
-                      : "border-border bg-secondary/40 text-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  <Clock className="h-3 w-3" />
-                  <span>{slot.label}</span>
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-1.5 text-[11px] text-muted-foreground flex items-center gap-1">
-            <Info className="h-3 w-3 text-muted-foreground/70" />
-            <span>Time slots are reserved on a first-come basis and validated by salon servers.</span>
-          </p>
+          <TimeSlotSelector
+            selectedDate={appointmentDate}
+            selectedSlot={timeSlot}
+            onSelectSlot={(slot) => {
+              setTimeSlot(slot);
+              setConflictError(null);
+            }}
+            userBookedSlots={currentUserBookedSlots}
+            conflictSlots={currentConflictSlots}
+            disabled={isSubmitting || isAdmin}
+          />
         </div>
 
-        {/* Special Instructions / Message */}
+        {/* Step 3: Special Requests / Notes */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label
               htmlFor="bookingMessage"
               className="block text-xs font-semibold uppercase tracking-wider text-foreground"
             >
-              Special Requests or Notes <span className="text-muted-foreground font-normal">(Optional)</span>
+              3. Special Requests or Notes <span className="text-muted-foreground font-normal">(Optional)</span>
             </label>
             <span className="text-[11px] text-muted-foreground">
               {message.length} / 500
@@ -331,7 +381,7 @@ export function BookingForm({ service }: BookingFormProps) {
               id="bookingMessage"
               rows={3}
               maxLength={500}
-              placeholder="e.g. Sensitive scalp, allergies, or styling preferences..."
+              placeholder="e.g. Sensitive scalp, styling preferences, or allergies..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               disabled={isSubmitting || isAdmin}
@@ -347,18 +397,21 @@ export function BookingForm({ service }: BookingFormProps) {
             <span className="font-semibold text-foreground">{service.name}</span>
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-            <span>Duration:</span>
+            <span>Session Duration:</span>
             <span className="text-foreground">{duration} minutes</span>
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
             <span>Scheduled Date &amp; Time:</span>
-            <span className="font-medium text-foreground">
-              {appointmentDate} at {SALON_TIME_SLOTS.find((s) => s.value === timeSlot)?.label || timeSlot}
+            <span className="font-medium text-foreground flex items-center gap-1">
+              <CalendarCheck className="h-3.5 w-3.5 text-primary" />
+              <span>
+                {appointmentDate} at {SALON_TIME_SLOTS.find((s) => s.value === timeSlot)?.label || timeSlot}
+              </span>
             </span>
           </div>
           <div className="flex items-center justify-between text-sm font-semibold text-foreground pt-2.5 border-t border-border/60">
             <span>Total Treatment Rate:</span>
-            <span className="text-base text-primary">${service.price}</span>
+            <span className="text-base text-primary font-bold">${service.price}</span>
           </div>
         </div>
 
@@ -385,7 +438,7 @@ export function BookingForm({ service }: BookingFormProps) {
               type="submit"
               variant="primary"
               size="md"
-              disabled={isSubmitting}
+              disabled={isSubmitting || currentUserBookedSlots.has(timeSlot) || currentConflictSlots.has(timeSlot)}
               className="w-full min-h-[44px]"
             >
               {isSubmitting ? (
