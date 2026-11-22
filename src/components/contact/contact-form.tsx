@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Send, Loader2, Info, AlertCircle, RefreshCw } from "lucide-react";
+import { Send, Loader2, AlertCircle, CheckCircle2, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 const contactFormSchema = z.object({
@@ -15,7 +16,8 @@ const contactFormSchema = z.object({
   email: z
     .string()
     .min(1, "Email address is required")
-    .email("Please enter a valid email address"),
+    .email("Please enter a valid email address")
+    .max(120, "Email address cannot exceed 120 characters"),
   subject: z
     .string()
     .min(3, "Subject must be at least 3 characters")
@@ -24,15 +26,19 @@ const contactFormSchema = z.object({
     .string()
     .min(10, "Message must be at least 10 characters")
     .max(2000, "Message cannot exceed 2000 characters"),
+  honeypot: z.string().optional(),
 });
 
 export type ContactFormData = z.infer<typeof contactFormSchema>;
 
 export function ContactForm() {
-  const [submissionNotice, setSubmissionNotice] = useState<{
-    senderName: string;
-    subject: string;
-  } | null>(null);
+  const [submissionState, setSubmissionState] = useState<{
+    status: "idle" | "success" | "error";
+    message: string | null;
+  }>({
+    status: "idle",
+    message: null,
+  });
 
   const {
     register,
@@ -46,25 +52,66 @@ export function ContactForm() {
       email: "",
       subject: "",
       message: "",
+      honeypot: "",
     },
     mode: "onBlur",
   });
 
   const onSubmit = async (data: ContactFormData) => {
-    // Brief processing delay to provide realistic tactile feedback
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    // Clear previous status
+    setSubmissionState({ status: "idle", message: null });
 
-    // Per specifications: Do not invent a backend endpoint or fake successful delivery.
-    // Display a clear, professional notification that message delivery is not configured yet.
-    setSubmissionNotice({
-      senderName: data.fullName,
-      subject: data.subject,
-    });
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (response.ok && result.success) {
+        setSubmissionState({
+          status: "success",
+          message:
+            result.message ||
+            "Thank you! Your message has been sent successfully. We will get back to you shortly.",
+        });
+        toast.success("Message sent successfully!");
+        reset({
+          fullName: "",
+          email: "",
+          subject: "",
+          message: "",
+          honeypot: "",
+        });
+      } else {
+        const errorMsg =
+          result.error ||
+          "Failed to deliver your message. Please try again later or reach out to us directly.";
+        setSubmissionState({
+          status: "error",
+          message: errorMsg,
+        });
+        toast.error(errorMsg);
+        // Preserves entered form values so user doesn't lose their input
+      }
+    } catch (err) {
+      console.error("Contact form submission error:", err);
+      const networkError =
+        "Network error. Please check your connection and try again.";
+      setSubmissionState({
+        status: "error",
+        message: networkError,
+      });
+      toast.error(networkError);
+    }
   };
 
-  const handleReset = () => {
-    setSubmissionNotice(null);
-    reset();
+  const handleSendAnother = () => {
+    setSubmissionState({ status: "idle", message: null });
   };
 
   return (
@@ -78,44 +125,73 @@ export function ContactForm() {
         </p>
       </div>
 
-      {/* Transparent Service Notice when Form is Validated & Submitted */}
-      {submissionNotice ? (
+      {/* Success Notification Banner */}
+      {submissionState.status === "success" && (
         <div
           role="status"
           aria-live="polite"
-          className="rounded-xl border border-amber-200 bg-amber-50/70 p-5 text-amber-950 mb-6 space-y-3"
+          className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-5 text-emerald-950 mb-6 space-y-3"
         >
           <div className="flex items-start gap-3">
-            <Info className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-sm font-semibold text-amber-900">
-                Message Delivery Service Not Configured
+              <h4 className="text-sm font-semibold text-emerald-900">
+                Message Sent Successfully
               </h4>
-              <p className="mt-1 text-xs sm:text-sm text-amber-800 leading-relaxed">
-                Thank you for your inquiry, <span className="font-semibold">{submissionNotice.senderName}</span>.
-                Direct online message submission is currently not configured on this platform.
-                Please reach out to our team directly via our email address or review our
-                Quick Help &amp; FAQ below for immediate answers regarding bookings and payments.
+              <p className="mt-1 text-xs sm:text-sm text-emerald-800 leading-relaxed">
+                {submissionState.message}
               </p>
             </div>
           </div>
-
           <div className="pt-2 flex justify-end">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={handleReset}
-              className="text-xs border-amber-300 text-amber-900 hover:bg-amber-100"
+              onClick={handleSendAnother}
+              className="text-xs border-emerald-300 text-emerald-900 hover:bg-emerald-100"
             >
-              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-              Edit or Reset Form
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+              Send Another Message
             </Button>
           </div>
         </div>
-      ) : null}
+      )}
+
+      {/* Error Notification Banner */}
+      {submissionState.status === "error" && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="rounded-xl border border-rose-200 bg-rose-50/80 p-5 text-rose-950 mb-6 space-y-2"
+        >
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-semibold text-rose-900">
+                Unable to Send Message
+              </h4>
+              <p className="mt-1 text-xs sm:text-sm text-rose-800 leading-relaxed">
+                {submissionState.message}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+        {/* Anti-spam Honeypot Field (Hidden from humans & screen readers) */}
+        <div className="hidden" aria-hidden="true" style={{ display: "none" }}>
+          <label htmlFor="contact-honeypot">Leave this field blank</label>
+          <input
+            id="contact-honeypot"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            {...register("honeypot")}
+          />
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {/* Full Name */}
           <div>
@@ -242,7 +318,7 @@ export function ContactForm() {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                <span>Validating &amp; Sending...</span>
+                <span>Sending Message...</span>
               </>
             ) : (
               <>
