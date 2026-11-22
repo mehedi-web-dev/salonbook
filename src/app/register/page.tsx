@@ -59,7 +59,11 @@ export default function RegisterPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (session?.user) {
-      router.replace("/dashboard");
+      if (session.user.role === "admin") {
+        router.replace("/dashboard/admin");
+      } else {
+        router.replace("/dashboard");
+      }
     }
   }, [session, router]);
 
@@ -86,6 +90,7 @@ export default function RegisterPage() {
 
       toast.success("Account created successfully! Welcome to SalonBook.");
       router.push("/dashboard");
+      router.refresh();
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Network error. Server could not be reached.";

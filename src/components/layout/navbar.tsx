@@ -37,7 +37,7 @@ export function Navbar() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const handleSignOut = async () => {
+          const handleSignOut = async () => {
     setIsLoggingOut(true);
     try {
       await signOut({
@@ -46,6 +46,7 @@ export function Navbar() {
             toast.success("Signed out successfully");
             setIsOpen(false);
             router.push("/login");
+            router.refresh();
           },
           onError: (ctx) => {
             toast.error(ctx.error.message || "Failed to sign out");
@@ -193,18 +194,18 @@ export function Navbar() {
               >
                 Contact
               </Link>
-              <Link
-                href="/dashboard"
-                className={`text-sm font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-2 py-1 ${
-                  isCustomerRouteActive("/dashboard")
-                    ? "text-primary font-semibold"
-                    : "text-muted-foreground"
-                }`}
-              >
-                Dashboard
-              </Link>
               {user && (
                 <>
+                  <Link
+                    href="/dashboard"
+                    className={`text-sm font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-2 py-1 ${
+                      isCustomerRouteActive("/dashboard")
+                        ? "text-primary font-semibold"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    Dashboard
+                  </Link>
                   <Link
                     href="/dashboard/appointments"
                     className={`text-sm font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-2 py-1 ${
@@ -304,10 +305,15 @@ export function Navbar() {
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Link href="/login">
                 <Button variant="ghost" size="sm">
                   Sign In
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button variant="outline" size="sm">
+                  Sign Up
                 </Button>
               </Link>
               <Link href="/services">
@@ -506,19 +512,19 @@ export function Navbar() {
                 >
                   Contact
                 </Link>
-                <Link
-                  href="/dashboard"
-                  onClick={() => setIsOpen(false)}
-                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    isCustomerRouteActive("/dashboard")
-                      ? "bg-accent text-accent-foreground font-semibold"
-                      : "text-foreground hover:bg-muted"
-                  }`}
-                >
-                  Dashboard
-                </Link>
                 {user && (
                   <>
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setIsOpen(false)}
+                      className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                        isCustomerRouteActive("/dashboard")
+                          ? "bg-accent text-accent-foreground font-semibold"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      Dashboard
+                    </Link>
                     <Link
                       href="/dashboard/appointments"
                       onClick={() => setIsOpen(false)}
@@ -597,6 +603,15 @@ export function Navbar() {
                 >
                   <Button variant="outline" size="md" className="w-full">
                     Sign In
+                  </Button>
+                </Link>
+                <Link
+                  href="/register"
+                  onClick={() => setIsOpen(false)}
+                  className="w-full"
+                >
+                  <Button variant="outline" size="md" className="w-full">
+                    Sign Up
                   </Button>
                 </Link>
                 <Link

@@ -40,10 +40,14 @@ export default function LoginPage() {
     },
   });
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated based on role
   useEffect(() => {
     if (session?.user) {
-      router.replace("/dashboard");
+      if (session.user.role === "admin") {
+        router.replace("/dashboard/admin");
+      } else {
+        router.replace("/dashboard");
+      }
     }
   }, [session, router]);
 
@@ -66,7 +70,13 @@ export default function LoginPage() {
       }
 
       toast.success("Welcome back! Signed in successfully.");
-      router.push("/dashboard");
+      const userRole = (res?.data as { user?: { role?: string } })?.user?.role;
+      if (userRole === "admin") {
+        router.push("/dashboard/admin");
+      } else {
+        router.push("/dashboard");
+      }
+      router.refresh();
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Network error. Server could not be reached.";
