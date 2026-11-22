@@ -4,8 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   Plus,
-  Search,
-  Filter,
   Edit2,
   Trash2,
   Power,
@@ -17,6 +15,7 @@ import {
   Loader2,
   Eye,
   SlidersHorizontal,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,6 +27,11 @@ import {
   deleteService,
 } from "@/lib/services-api";
 import type { Service } from "@/types";
+import { filterServices } from "@/lib/filter-utils";
+import {
+  AdminFilterToolbar,
+  type ActiveFilterTag,
+} from "@/components/admin/admin-filter-toolbar";
 
 export default function AdminServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
@@ -38,6 +42,9 @@ export default function AdminServicesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<
+    "price_asc" | "price_desc" | "newest" | "oldest" | "name_asc" | "name_desc"
+  >("newest");
 
   // Status toggle in-progress tracking by serviceId
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
@@ -96,29 +103,58 @@ export default function AdminServicesPage() {
     return Array.from(set).sort();
   }, [services]);
 
-  // Filtered services
+  // Filtered and sorted services using pure utility
   const filteredServices = useMemo(() => {
-    return services.filter((s) => {
-      // Name search
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const matchesName = s.name.toLowerCase().includes(query);
-        const matchesCategory = s.category.toLowerCase().includes(query);
-        if (!matchesName && !matchesCategory) return false;
-      }
-
-      // Status filter
-      if (statusFilter === "active" && !s.isActive) return false;
-      if (statusFilter === "inactive" && s.isActive) return false;
-
-      // Category filter
-      if (categoryFilter !== "all" && s.category.toLowerCase() !== categoryFilter.toLowerCase()) {
-        return false;
-      }
-
-      return true;
+    return filterServices(services, {
+      search: searchQuery,
+      category: categoryFilter,
+      status: statusFilter,
+      sortBy,
     });
-  }, [services, searchQuery, statusFilter, categoryFilter]);
+  }, [services, searchQuery, categoryFilter, statusFilter, sortBy]);
+
+  // Construct active filter tags for one-click removal
+  const activeTags = useMemo(() => {
+    const tags: ActiveFilterTag[] = [];
+    if (statusFilter !== "all") {
+      tags.push({
+        id: "status",
+        label: "Status",
+        value: statusFilter.toUpperCase(),
+        onRemove: () => setStatusFilter("all"),
+      });
+    }
+    if (categoryFilter !== "all") {
+      tags.push({
+        id: "category",
+        label: "Category",
+        value: categoryFilter,
+        onRemove: () => setCategoryFilter("all"),
+      });
+    }
+    if (sortBy !== "newest") {
+      const sortLabels: Record<string, string> = {
+        price_asc: "Price: Low to High",
+        price_desc: "Price: High to Low",
+        oldest: "Oldest First",
+        name_asc: "Name: A to Z",
+      };
+      tags.push({
+        id: "sort",
+        label: "Sort",
+        value: sortLabels[sortBy] || sortBy,
+        onRemove: () => setSortBy("newest"),
+      });
+    }
+    return tags;
+  }, [statusFilter, categoryFilter, sortBy]);
+
+  const handleClearAllFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setCategoryFilter("all");
+    setSortBy("newest");
+  };
 
   // Handle status toggle (Activate / Deactivate)
   const handleToggleStatus = async (service: Service) => {
@@ -168,6 +204,10 @@ export default function AdminServicesPage() {
             Dashboard
           </Link>
           <span>/</span>
+          <Link href="/dashboard/admin" className="hover:text-foreground transition-colors font-medium">
+            Admin Overview
+          </Link>
+          <span>/</span>
           <span className="text-foreground font-semibold">Services Management</span>
         </nav>
 
@@ -187,8 +227,18 @@ export default function AdminServicesPage() {
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isLoading}
+              className="gap-1.5 text-xs"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+              <span>Refresh Catalog</span>
+            </Button>
             <Link href="/dashboard/admin/services/new">
-              <Button variant="primary" size="md" className="gap-2 shadow-xs">
+              <Button variant="primary" size="sm" className="gap-2 shadow-xs text-xs">
                 <Plus className="h-4 w-4" />
                 <span>Add New Service</span>
               </Button>
@@ -196,82 +246,69 @@ export default function AdminServicesPage() {
           </div>
         </div>
 
-        {/* Toolbar: Search & Filter Controls */}
-        <div className="mt-8 rounded-xl border border-border bg-card p-4 sm:p-5 shadow-xs">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
-            {/* Search Input */}
-            <div className="md:col-span-5 relative">
-              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-muted-foreground">
-                <Search className="h-4 w-4" />
-              </span>
-              <input
-                type="text"
-                placeholder="Search treatments by name or category..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-md border border-border bg-background pl-9 pr-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              />
-            </div>
+        {/* Advanced Filter Toolbar */}
+        <div className="mt-8">
+          <AdminFilterToolbar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Search treatment name or description..."
+            activeTags={activeTags}
+            onClearAll={handleClearAllFilters}
+            totalCount={services.length}
+            filteredCount={filteredServices.length}
+            itemName="services"
+          >
+            {/* Category Dropdown */}
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              aria-label="Filter by category"
+              className="rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            >
+              <option value="all">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
 
-            {/* Status Filter */}
-            <div className="md:col-span-3">
-              <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-                  <Filter className="h-3.5 w-3.5" />
-                </span>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
-                  aria-label="Filter by status"
-                  className="w-full rounded-md border border-border bg-background pl-8 pr-8 py-2 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <option value="all">All Statuses ({services.length})</option>
-                  <option value="active">Active Only ({services.filter((s) => s.isActive).length})</option>
-                  <option value="inactive">Inactive Only ({services.filter((s) => !s.isActive).length})</option>
-                </select>
-              </div>
-            </div>
+            {/* Status Dropdown */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
+              aria-label="Filter by status"
+              className="rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            >
+              <option value="all">All Statuses</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
+            </select>
 
-            {/* Category Filter */}
-            <div className="md:col-span-3">
-              <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-                  <Tag className="h-3.5 w-3.5" />
-                </span>
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  aria-label="Filter by category"
-                  className="w-full rounded-md border border-border bg-background pl-8 pr-8 py-2 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <option value="all">All Categories</option>
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Reset Filter Button */}
-            <div className="md:col-span-1 flex items-center justify-end">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSearchQuery("");
-                  setStatusFilter("all");
-                  setCategoryFilter("all");
-                }}
-                disabled={!searchQuery && statusFilter === "all" && categoryFilter === "all"}
-                className="w-full text-xs text-muted-foreground hover:text-foreground h-9"
-                title="Reset filters"
-              >
-                Reset
-              </Button>
-            </div>
-          </div>
+            {/* Sort Dropdown */}
+            <select
+              value={sortBy}
+              onChange={(e) =>
+                setSortBy(
+                  e.target.value as
+                    | "price_asc"
+                    | "price_desc"
+                    | "newest"
+                    | "oldest"
+                    | "name_asc"
+                    | "name_desc"
+                )
+              }
+              aria-label="Sort services"
+              className="rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="price_asc">Price: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
+              <option value="name_asc">Name: A to Z</option>
+            </select>
+          </AdminFilterToolbar>
         </div>
 
         {/* Services Content Section */}
@@ -307,7 +344,7 @@ export default function AdminServicesPage() {
               <p className="mt-1 text-xs text-rose-800 max-w-sm mx-auto mb-6">
                 {errorMessage}
               </p>
-              <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2">
+              <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2 text-xs">
                 <RefreshCw className="h-3.5 w-3.5" />
                 <span>Try Again</span>
               </Button>
@@ -318,10 +355,10 @@ export default function AdminServicesPage() {
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground mb-3">
                 <SlidersHorizontal className="h-6 w-6" />
               </div>
-              <h2 className="text-base font-semibold text-foreground">
+              <h2 className="font-serif text-xl font-semibold text-foreground">
                 No Services Found
               </h2>
-              <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
+              <p className="mt-2 text-sm text-muted-foreground max-w-sm mx-auto">
                 {services.length === 0
                   ? "Your salon catalog is currently empty. Click 'Add New Service' above to create your first treatment offering."
                   : "No services match your active search and filter criteria. Try adjusting your parameters or reset filters."}
@@ -329,7 +366,7 @@ export default function AdminServicesPage() {
               <div className="mt-5 flex items-center justify-center gap-3">
                 {services.length === 0 ? (
                   <Link href="/dashboard/admin/services/new">
-                    <Button variant="primary" size="sm" className="gap-2">
+                    <Button variant="primary" size="sm" className="gap-2 text-xs">
                       <Plus className="h-4 w-4" />
                       <span>Create First Service</span>
                     </Button>
@@ -338,13 +375,11 @@ export default function AdminServicesPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setStatusFilter("all");
-                      setCategoryFilter("all");
-                    }}
+                    onClick={handleClearAllFilters}
+                    className="gap-1.5 text-xs"
                   >
-                    Reset Filters
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    <span>Reset All Filters</span>
                   </Button>
                 )}
               </div>
@@ -415,7 +450,7 @@ export default function AdminServicesPage() {
                           </td>
 
                           {/* Price */}
-                          <td className="px-4 py-4 whitespace-nowrap font-semibold text-foreground">
+                          <td className="px-4 py-4 whitespace-nowrap font-serif text-base font-semibold text-foreground">
                             ${service.price}
                           </td>
 
@@ -432,8 +467,8 @@ export default function AdminServicesPage() {
                             <span
                               className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                                 service.isActive
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : "bg-amber-100 text-amber-800"
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : "bg-amber-100 text-amber-800"
                               }`}
                             >
                               <span
@@ -532,7 +567,7 @@ export default function AdminServicesPage() {
                             <h3 className="font-medium text-foreground text-sm line-clamp-1">
                               {service.name}
                             </h3>
-                            <span className="font-semibold text-foreground text-sm shrink-0">
+                            <span className="font-serif font-semibold text-foreground text-sm shrink-0">
                               ${service.price}
                             </span>
                           </div>
@@ -549,7 +584,7 @@ export default function AdminServicesPage() {
 
                       <div className="flex items-center justify-between pt-2 border-t border-border/60">
                         <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
                             service.isActive
                               ? "bg-emerald-100 text-emerald-800"
                               : "bg-amber-100 text-amber-800"
@@ -563,29 +598,32 @@ export default function AdminServicesPage() {
                           <span>{service.isActive ? "Active" : "Inactive"}</span>
                         </span>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => handleToggleStatus(service)}
                             disabled={isUpdating}
-                            className={`px-2 py-1 text-xs font-medium rounded border ${
+                            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium border transition-colors ${
                               service.isActive
                                 ? "border-amber-200 bg-amber-50 text-amber-800"
                                 : "border-emerald-200 bg-emerald-50 text-emerald-800"
                             }`}
                           >
-                            {isUpdating ? "..." : service.isActive ? "Deactivate" : "Activate"}
+                            <Power className="h-3 w-3" />
+                            <span>{service.isActive ? "Deactivate" : "Activate"}</span>
                           </button>
+
                           <Link
                             href={`/dashboard/admin/services/${service._id}/edit`}
-                            className="rounded border border-border bg-card px-2 py-1 text-xs font-medium text-foreground"
+                            className="inline-flex items-center rounded-md border border-border bg-card p-1.5 text-foreground hover:bg-muted"
                           >
-                            Edit
+                            <Edit2 className="h-3.5 w-3.5 text-foreground/70" />
                           </Link>
+
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(service)}
-                            className="p-1 rounded border border-rose-200 text-rose-600"
+                            className="inline-flex items-center rounded-md border border-rose-200 p-1.5 text-rose-600 hover:bg-rose-50"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -599,7 +637,7 @@ export default function AdminServicesPage() {
           )}
         </div>
 
-        {/* Delete Confirmation Dialog */}
+        {/* Delete Confirmation Modal */}
         <DeleteDialog
           isOpen={!!deleteTarget}
           serviceName={deleteTarget?.name || ""}

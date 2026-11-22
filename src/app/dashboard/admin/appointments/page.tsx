@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   Calendar,
@@ -9,43 +9,42 @@ import {
   XCircle,
   AlertCircle,
   RefreshCw,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
+  User as UserIcon,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { AdminGuard } from "@/components/admin/admin-guard";
 import { getAdminAppointments, updateAdminAppointmentStatus } from "@/lib/admin-api";
-import type { Appointment, AppointmentStatus, PaginationMeta } from "@/types";
+import type { Appointment, AppointmentStatus, PaymentStatus } from "@/types";
+import { filterAppointments } from "@/lib/filter-utils";
+import {
+  AdminFilterToolbar,
+  type ActiveFilterTag,
+} from "@/components/admin/admin-filter-toolbar";
 
 export default function AdminAppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [pagination, setPagination] = useState<PaginationMeta>({
-    total: 0,
-    page: 1,
-    limit: 10,
-    totalPages: 1,
-  });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<"all" | AppointmentStatus>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const loadAppointments = async (page: number, status: "all" | AppointmentStatus) => {
+  // Filter & Search States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | AppointmentStatus>("all");
+  const [paymentFilter, setPaymentFilter] = useState<"all" | PaymentStatus>("all");
+  const [serviceFilter, setServiceFilter] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
+
+  const loadAppointments = async () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const response = await getAdminAppointments({
-        page,
-        limit: 10,
-        status,
-      });
+      const response = await getAdminAppointments({ limit: 100 });
       setAppointments(response.data || []);
-      if (response.pagination) {
-        setPagination(response.pagination);
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load salon appointments";
       setErrorMessage(msg);
@@ -58,16 +57,9 @@ export default function AdminAppointmentsPage() {
     let isCurrent = true;
     const fetchList = async () => {
       try {
-        const response = await getAdminAppointments({
-          page: currentPage,
-          limit: 10,
-          status: statusFilter,
-        });
+        const response = await getAdminAppointments({ limit: 100 });
         if (isCurrent) {
           setAppointments(response.data || []);
-          if (response.pagination) {
-            setPagination(response.pagination);
-          }
         }
       } catch (err: unknown) {
         if (isCurrent) {
@@ -84,7 +76,95 @@ export default function AdminAppointmentsPage() {
     return () => {
       isCurrent = false;
     };
-  }, [currentPage, statusFilter]);
+  }, []);
+
+  // Compute unique services list from appointments for dropdown
+  const uniqueServices = useMemo(() => {
+    const map = new Map<string, string>();
+    appointments.forEach((app) => {
+      if (app.service?.name) {
+        map.set(app.service.name, app.service.name);
+      }
+    });
+    return Array.from(map.values()).sort();
+  }, [appointments]);
+
+  // Combined filtered appointments
+  const filteredAppointments = useMemo(() => {
+    return filterAppointments(appointments, {
+      search: searchQuery,
+      status: statusFilter,
+      paymentStatus: paymentFilter,
+      serviceId: serviceFilter,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      sortBy,
+    });
+  }, [appointments, searchQuery, statusFilter, paymentFilter, serviceFilter, startDate, endDate, sortBy]);
+
+  // Construct active filter tags for one-click removal
+  const activeTags = useMemo(() => {
+    const tags: ActiveFilterTag[] = [];
+    if (statusFilter !== "all") {
+      tags.push({
+        id: "status",
+        label: "Status",
+        value: statusFilter.toUpperCase(),
+        onRemove: () => setStatusFilter("all"),
+      });
+    }
+    if (paymentFilter !== "all") {
+      tags.push({
+        id: "payment",
+        label: "Payment",
+        value: paymentFilter.toUpperCase(),
+        onRemove: () => setPaymentFilter("all"),
+      });
+    }
+    if (serviceFilter !== "all") {
+      tags.push({
+        id: "service",
+        label: "Service",
+        value: serviceFilter,
+        onRemove: () => setServiceFilter("all"),
+      });
+    }
+    if (startDate) {
+      tags.push({
+        id: "startDate",
+        label: "From",
+        value: startDate,
+        onRemove: () => setStartDate(""),
+      });
+    }
+    if (endDate) {
+      tags.push({
+        id: "endDate",
+        label: "To",
+        value: endDate,
+        onRemove: () => setEndDate(""),
+      });
+    }
+    if (sortBy !== "newest") {
+      tags.push({
+        id: "sort",
+        label: "Sort",
+        value: "Oldest First",
+        onRemove: () => setSortBy("newest"),
+      });
+    }
+    return tags;
+  }, [statusFilter, paymentFilter, serviceFilter, startDate, endDate, sortBy]);
+
+  const handleClearAllFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setPaymentFilter("all");
+    setServiceFilter("all");
+    setStartDate("");
+    setEndDate("");
+    setSortBy("newest");
+  };
 
   const handleUpdateStatus = async (
     id: string,
@@ -94,7 +174,9 @@ export default function AdminAppointmentsPage() {
     try {
       await updateAdminAppointmentStatus(id, newStatus);
       toast.success(`Appointment status updated to "${newStatus}"`);
-      loadAppointments(currentPage, statusFilter);
+      setAppointments((prev) =>
+        prev.map((app) => (app._id === id ? { ...app, status: newStatus } : app))
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to update appointment status";
       toast.error(msg);
@@ -170,7 +252,7 @@ export default function AdminAppointmentsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => loadAppointments(currentPage, statusFilter)}
+              onClick={loadAppointments}
               disabled={isLoading}
               className="gap-1.5 text-xs"
             >
@@ -185,66 +267,92 @@ export default function AdminAppointmentsPage() {
           </div>
         </div>
 
-        {/* Filter Bar */}
-        <div className="mt-8 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1 shadow-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter("all");
-                setCurrentPage(1);
-              }}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                statusFilter === "all"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+        {/* Advanced Filter Toolbar */}
+        <div className="mt-8">
+          <AdminFilterToolbar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Search customer name, email, service..."
+            activeTags={activeTags}
+            onClearAll={handleClearAllFilters}
+            totalCount={appointments.length}
+            filteredCount={filteredAppointments.length}
+            itemName="appointments"
+          >
+            {/* Status Dropdown */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as "all" | AppointmentStatus)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              aria-label="Filter by appointment status"
             >
-              All Bookings
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter("pending");
-                setCurrentPage(1);
-              }}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                statusFilter === "pending"
-                  ? "bg-amber-600 text-white shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              <option value="all">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+
+            {/* Payment Status Dropdown */}
+            <select
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value as "all" | PaymentStatus)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              aria-label="Filter by payment status"
             >
-              Pending
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter("confirmed");
-                setCurrentPage(1);
-              }}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                statusFilter === "confirmed"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              <option value="all">All Payments</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+
+            {/* Service Filter Dropdown */}
+            {uniqueServices.length > 0 && (
+              <select
+                value={serviceFilter}
+                onChange={(e) => setServiceFilter(e.target.value)}
+                className="rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all max-w-[160px] truncate"
+                aria-label="Filter by service"
+              >
+                <option value="all">All Services</option>
+                {uniqueServices.map((srv) => (
+                  <option key={srv} value={srv}>
+                    {srv}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Date Range Inputs */}
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                title="Start date"
+                className="rounded-xl border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                aria-label="Start date filter"
+              />
+              <span className="text-muted-foreground text-xs">to</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                title="End date"
+                className="rounded-xl border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                aria-label="End date filter"
+              />
+            </div>
+
+            {/* Sort Order Dropdown */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as "newest" | "oldest")}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              aria-label="Sort appointments"
             >
-              Confirmed
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter("cancelled");
-                setCurrentPage(1);
-              }}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                statusFilter === "cancelled"
-                  ? "bg-rose-600 text-white shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Cancelled
-            </button>
-          </div>
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </AdminFilterToolbar>
         </div>
 
         {/* Content Section */}
@@ -264,7 +372,7 @@ export default function AdminAppointmentsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => loadAppointments(currentPage, statusFilter)}
+                    onClick={loadAppointments}
                     className="mt-3 gap-1.5 text-xs border-rose-300 text-rose-900 hover:bg-rose-100"
                   >
                     <RefreshCw className="h-3 w-3" />
@@ -290,13 +398,15 @@ export default function AdminAppointmentsPage() {
                 </div>
               ))}
             </div>
-          ) : appointments.length > 0 ? (
+          ) : filteredAppointments.length > 0 ? (
             <div className="space-y-4">
+              {/* Desktop Appointments Table */}
               <div className="hidden md:block overflow-hidden rounded-xl border border-border bg-card shadow-xs">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-border bg-muted/40 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     <tr>
                       <th scope="col" className="px-6 py-4">Treatment</th>
+                      <th scope="col" className="px-6 py-4">Customer</th>
                       <th scope="col" className="px-6 py-4">Schedule</th>
                       <th scope="col" className="px-6 py-4">Price & Payment</th>
                       <th scope="col" className="px-6 py-4">Status</th>
@@ -304,8 +414,9 @@ export default function AdminAppointmentsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {appointments.map((app) => (
+                    {filteredAppointments.map((app) => (
                       <tr key={app._id} className="transition-colors hover:bg-muted/20">
+                        {/* Treatment Column */}
                         <td className="px-6 py-4">
                           <div className="font-semibold text-foreground">
                             {app.service?.name || "Salon Treatment"}
@@ -315,23 +426,38 @@ export default function AdminAppointmentsPage() {
                           </div>
                         </td>
 
+                        {/* Customer Column */}
                         <td className="px-6 py-4 text-xs">
                           <div className="font-medium text-foreground flex items-center gap-1.5">
-                            <Calendar className="h-3.5 w-3.5 text-primary" />
+                            <UserIcon className="h-3.5 w-3.5 text-primary shrink-0" />
+                            <span className="truncate max-w-[150px]">
+                              {app.customer?.name || "Salon Client"}
+                            </span>
+                          </div>
+                          <div className="text-muted-foreground mt-0.5 truncate max-w-[150px]">
+                            {app.customer?.email || "No email on record"}
+                          </div>
+                        </td>
+
+                        {/* Schedule Column */}
+                        <td className="px-6 py-4 text-xs">
+                          <div className="font-medium text-foreground flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
                             <span>{app.appointmentDate}</span>
                           </div>
                           <div className="flex items-center gap-1.5 text-muted-foreground mt-0.5">
-                            <Clock className="h-3.5 w-3.5" />
+                            <Clock className="h-3.5 w-3.5 shrink-0" />
                             <span>{app.timeSlot}</span>
                           </div>
                         </td>
 
+                        {/* Price & Payment Column */}
                         <td className="px-6 py-4 text-xs">
                           <div className="font-serif text-base font-bold text-foreground">
                             ${app.servicePrice}
                           </div>
                           <span
-                            className={`inline-block text-[10px] font-bold uppercase rounded px-1.5 py-0.2 mt-0.5 ${
+                            className={`inline-block text-[10px] font-bold uppercase rounded px-1.5 py-0.5 mt-0.5 ${
                               app.paymentStatus === "paid"
                                 ? "bg-emerald-100 text-emerald-800"
                                 : "bg-secondary text-muted-foreground"
@@ -341,8 +467,10 @@ export default function AdminAppointmentsPage() {
                           </span>
                         </td>
 
+                        {/* Status Column */}
                         <td className="px-6 py-4">{renderStatusBadge(app.status)}</td>
 
+                        {/* Actions Column */}
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             {app.status === "pending" && (
@@ -380,9 +508,9 @@ export default function AdminAppointmentsPage() {
                 </table>
               </div>
 
-              {/* Mobile Cards */}
+              {/* Mobile Appointment Cards */}
               <div className="md:hidden space-y-3">
-                {appointments.map((app) => (
+                {filteredAppointments.map((app) => (
                   <div
                     key={app._id}
                     className="rounded-xl border border-border bg-card p-4 shadow-xs space-y-3"
@@ -401,95 +529,93 @@ export default function AdminAppointmentsPage() {
 
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
-                        <span className="text-muted-foreground block">Schedule:</span>
-                        <span className="font-medium text-foreground flex items-center gap-1 mt-0.5">
-                          <Calendar className="h-3 w-3 text-primary" />
-                          <span>{app.appointmentDate}</span>
+                        <span className="text-muted-foreground block">Customer:</span>
+                        <span className="font-medium text-foreground flex items-center gap-1 mt-0.5 truncate">
+                          <UserIcon className="h-3 w-3 text-primary shrink-0" />
+                          <span>{app.customer?.name || "Salon Client"}</span>
                         </span>
-                        <span className="font-medium text-foreground flex items-center gap-1 mt-0.5">
-                          <Clock className="h-3 w-3 text-primary" />
-                          <span>{app.timeSlot}</span>
+                        <span className="text-muted-foreground block mt-0.5 truncate text-[11px]">
+                          {app.customer?.email || "No email"}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-muted-foreground block">Pricing:</span>
-                        <span className="font-serif text-base font-bold text-foreground">
-                          ${app.servicePrice}
+                        <span className="text-muted-foreground block">Schedule:</span>
+                        <span className="font-medium text-foreground flex items-center gap-1 mt-0.5">
+                          <Calendar className="h-3 w-3 text-primary shrink-0" />
+                          <span>{app.appointmentDate}</span>
                         </span>
-                        <span className="block text-[10px] font-bold uppercase text-muted-foreground mt-0.5">
-                          Payment: {app.paymentStatus}
+                        <span className="font-medium text-foreground flex items-center gap-1 mt-0.5">
+                          <Clock className="h-3 w-3 text-primary shrink-0" />
+                          <span>{app.timeSlot}</span>
                         </span>
                       </div>
                     </div>
 
-                    {app.status === "pending" && (
-                      <div className="pt-2 flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={updatingId === app._id}
-                          onClick={() => handleUpdateStatus(app._id, "confirmed")}
-                          className="flex-1 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50"
+                    <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-muted-foreground mr-1.5">Price:</span>
+                        <span className="font-serif text-base font-bold text-foreground">
+                          ${app.servicePrice}
+                        </span>
+                        <span
+                          className={`ml-2 inline-block text-[10px] font-bold uppercase rounded px-1.5 py-0.5 ${
+                            app.paymentStatus === "paid"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-secondary text-muted-foreground"
+                          }`}
                         >
-                          Confirm Reservation
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={updatingId === app._id}
-                          onClick={() => handleUpdateStatus(app._id, "cancelled")}
-                          className="flex-1 text-xs border-rose-300 text-rose-800 hover:bg-rose-50"
-                        >
-                          Cancel
-                        </Button>
+                          {app.paymentStatus}
+                        </span>
                       </div>
-                    )}
+
+                      {app.status === "pending" && (
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={updatingId === app._id}
+                            onClick={() => handleUpdateStatus(app._id, "confirmed")}
+                            className="text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50 h-7 px-2.5"
+                          >
+                            Confirm
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={updatingId === app._id}
+                            onClick={() => handleUpdateStatus(app._id, "cancelled")}
+                            className="text-xs border-rose-300 text-rose-800 hover:bg-rose-50 h-7 px-2.5"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
-
-              {/* Pagination */}
-              {pagination.totalPages > 1 && (
-                <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
-                  <p className="text-xs text-muted-foreground">
-                    Showing Page <strong className="text-foreground">{pagination.page}</strong> of{" "}
-                    <strong className="text-foreground">{pagination.totalPages}</strong> ({pagination.total} total bookings)
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                      disabled={currentPage <= 1 || isLoading}
-                      className="gap-1 text-xs"
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                      <span>Previous</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => p + 1)}
-                      disabled={currentPage >= pagination.totalPages || isLoading}
-                      className="gap-1 text-xs"
-                    >
-                      <span>Next</span>
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center shadow-xs">
               <Calendar className="mx-auto h-8 w-8 text-muted-foreground/60 mb-2" />
               <h2 className="font-serif text-xl font-semibold text-foreground">
-                No Appointments Recorded
+                No Appointments Match Filters
               </h2>
               <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-                No customer bookings match your selected status filter.
+                No client bookings match your active search and filter criteria. Try adjusting or clearing your filters to see more results.
               </p>
+              <div className="mt-5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearAllFilters}
+                  className="gap-1.5 text-xs"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>Clear All Filters</span>
+                </Button>
+              </div>
             </div>
           )}
         </div>

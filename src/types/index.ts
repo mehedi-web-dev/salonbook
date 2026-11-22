@@ -104,6 +104,13 @@ export interface Appointment {
   createdAt: string;
   updatedAt: string;
   service?: AppointmentServiceInfo | null;
+  customer?: {
+    _id?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    role?: string;
+  } | null;
 }
 
 export interface CreateAppointmentInput {

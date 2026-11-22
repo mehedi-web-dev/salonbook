@@ -1,19 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   Users,
-  Search,
   CheckCircle2,
   XCircle,
   AlertCircle,
   RefreshCw,
-  ChevronLeft,
-  ChevronRight,
   Eye,
   Ban,
   ShieldCheck,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,23 +19,23 @@ import { AdminGuard } from "@/components/admin/admin-guard";
 import { UserStatusDialog } from "@/components/admin/user-status-dialog";
 import { useSession } from "@/lib/auth-client";
 import { getAdminUsers, updateAdminUserStatus } from "@/lib/admin-api";
-import type { AdminUser, PaginationMeta } from "@/types";
+import type { AdminUser } from "@/types";
+import { filterUsers } from "@/lib/filter-utils";
+import {
+  AdminFilterToolbar,
+  type ActiveFilterTag,
+} from "@/components/admin/admin-filter-toolbar";
 
 export default function AdminUsersPage() {
   const { data: session } = useSession();
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [pagination, setPagination] = useState<PaginationMeta>({
-    total: 0,
-    page: 1,
-    limit: 10,
-    totalPages: 1,
-  });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "blocked">("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchInput, setSearchInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Search, Filter & Sort State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "blocked">("all");
+  const [sortBy, setSortBy] = useState<"name_asc" | "name_desc" | "newest" | "oldest">("newest");
 
   // Status dialog state
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
@@ -45,20 +43,12 @@ export default function AdminUsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  const loadUsers = async (page: number, search: string, status: "all" | "active" | "blocked") => {
+  const loadUsers = async () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const response = await getAdminUsers({
-        page,
-        limit: 10,
-        search,
-        status,
-      });
+      const response = await getAdminUsers({ limit: 100 });
       setUsers(response.data || []);
-      if (response.pagination) {
-        setPagination(response.pagination);
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load customers";
       setErrorMessage(msg);
@@ -71,17 +61,9 @@ export default function AdminUsersPage() {
     let isCurrent = true;
     const fetchList = async () => {
       try {
-        const response = await getAdminUsers({
-          page: currentPage,
-          limit: 10,
-          search: searchQuery,
-          status: statusFilter,
-        });
+        const response = await getAdminUsers({ limit: 100 });
         if (isCurrent) {
           setUsers(response.data || []);
-          if (response.pagination) {
-            setPagination(response.pagination);
-          }
         }
       } catch (err: unknown) {
         if (isCurrent) {
@@ -98,18 +80,48 @@ export default function AdminUsersPage() {
     return () => {
       isCurrent = false;
     };
-  }, [currentPage, searchQuery, statusFilter]);
+  }, []);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCurrentPage(1);
-    setSearchQuery(searchInput.trim());
-  };
+  // Filtered and sorted users via pure filter utility
+  const filteredUsers = useMemo(() => {
+    return filterUsers(users, {
+      search: searchQuery,
+      status: statusFilter,
+      sortBy,
+    });
+  }, [users, searchQuery, statusFilter, sortBy]);
 
-  const handleClearSearch = () => {
-    setSearchInput("");
+  // Construct active filter tags for one-click removal
+  const activeTags = useMemo(() => {
+    const tags: ActiveFilterTag[] = [];
+    if (statusFilter !== "all") {
+      tags.push({
+        id: "status",
+        label: "Status",
+        value: statusFilter.toUpperCase(),
+        onRemove: () => setStatusFilter("all"),
+      });
+    }
+    if (sortBy !== "newest") {
+      const sortLabels: Record<string, string> = {
+        oldest: "Oldest Registered",
+        name_asc: "Name: A to Z",
+        name_desc: "Name: Z to A",
+      };
+      tags.push({
+        id: "sort",
+        label: "Sort",
+        value: sortLabels[sortBy] || sortBy,
+        onRemove: () => setSortBy("newest"),
+      });
+    }
+    return tags;
+  }, [statusFilter, sortBy]);
+
+  const handleClearAllFilters = () => {
     setSearchQuery("");
-    setCurrentPage(1);
+    setStatusFilter("all");
+    setSortBy("newest");
   };
 
   const openStatusDialog = (user: AdminUser, willBlock: boolean) => {
@@ -127,8 +139,9 @@ export default function AdminUsersPage() {
         `Customer account successfully ${targetBlocked ? "blocked" : "unblocked"}`
       );
       setIsDialogOpen(false);
-      // Refresh customer list
-      loadUsers(currentPage, searchQuery, statusFilter);
+      setUsers((prev) =>
+        prev.map((u) => (u._id === selectedUser._id ? { ...u, isBlocked: targetBlocked } : u))
+      );
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Failed to update customer status";
@@ -196,7 +209,7 @@ export default function AdminUsersPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => loadUsers(currentPage, searchQuery, statusFilter)}
+              onClick={loadUsers}
               disabled={isLoading}
               className="gap-1.5 text-xs"
             >
@@ -211,81 +224,45 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
-        {/* Filter and Search Bar */}
-        <div className="mt-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Search Form */}
-          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 max-w-md w-full">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search by name or email..."
-                className="w-full rounded-md border border-border bg-card py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-            <Button type="submit" variant="primary" size="sm" className="text-xs">
-              Search
-            </Button>
-            {searchQuery && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleClearSearch}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Clear
-              </Button>
-            )}
-          </form>
+        {/* Advanced Filter Toolbar */}
+        <div className="mt-8">
+          <AdminFilterToolbar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Search customer by name, email, or phone..."
+            activeTags={activeTags}
+            onClearAll={handleClearAllFilters}
+            totalCount={users.length}
+            filteredCount={filteredUsers.length}
+            itemName="customers"
+          >
+            {/* Status Dropdown */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "blocked")}
+              aria-label="Filter by account status"
+              className="rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            >
+              <option value="all">All Statuses</option>
+              <option value="active">Active Only</option>
+              <option value="blocked">Blocked Only</option>
+            </select>
 
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1 shadow-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter("all");
-                setCurrentPage(1);
-              }}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                statusFilter === "all"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+            {/* Sort Dropdown */}
+            <select
+              value={sortBy}
+              onChange={(e) =>
+                setSortBy(e.target.value as "name_asc" | "name_desc" | "newest" | "oldest")
+              }
+              aria-label="Sort customer directory"
+              className="rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
             >
-              All Clients
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter("active");
-                setCurrentPage(1);
-              }}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                statusFilter === "active"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Active
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter("blocked");
-                setCurrentPage(1);
-              }}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                statusFilter === "blocked"
-                  ? "bg-rose-600 text-white shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Blocked
-            </button>
-          </div>
+              <option value="newest">Newest Registered</option>
+              <option value="oldest">Oldest Registered</option>
+              <option value="name_asc">Name: A to Z</option>
+              <option value="name_desc">Name: Z to A</option>
+            </select>
+          </AdminFilterToolbar>
         </div>
 
         {/* Content Section */}
@@ -308,7 +285,7 @@ export default function AdminUsersPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => loadUsers(currentPage, searchQuery, statusFilter)}
+                    onClick={loadUsers}
                     className="mt-3 gap-1.5 text-xs border-rose-300 text-rose-900 hover:bg-rose-100"
                   >
                     <RefreshCw className="h-3 w-3" />
@@ -335,7 +312,7 @@ export default function AdminUsersPage() {
                 </div>
               ))}
             </div>
-          ) : users.length > 0 ? (
+          ) : filteredUsers.length > 0 ? (
             <div className="space-y-4">
               {/* Desktop Table View */}
               <div className="hidden md:block overflow-hidden rounded-xl border border-border bg-card shadow-xs">
@@ -350,7 +327,7 @@ export default function AdminUsersPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {users.map((user) => {
+                    {filteredUsers.map((user) => {
                       const isSelf =
                         (user.email && user.email.toLowerCase() === currentAdminEmail) ||
                         user._id === currentAdminId;
@@ -378,7 +355,7 @@ export default function AdminUsersPage() {
                                 <div className="font-semibold text-foreground flex items-center gap-1.5">
                                   <span>{user.name}</span>
                                   {isSelf && (
-                                    <span className="rounded bg-rose-100 text-rose-800 px-1.5 py-0.2 text-[10px] font-bold uppercase tracking-wider">
+                                    <span className="rounded bg-rose-100 text-rose-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
                                       You
                                     </span>
                                   )}
@@ -448,8 +425,8 @@ export default function AdminUsersPage() {
                                   size="sm"
                                   disabled={isSelf}
                                   onClick={() => openStatusDialog(user, true)}
-                                  className="gap-1 text-xs border-rose-300 text-rose-800 hover:bg-rose-50 hover:text-rose-900 disabled:opacity-40"
-                                  title={isSelf ? "Cannot modify own status" : "Suspend account"}
+                                  className="gap-1 text-xs border-rose-300 text-rose-800 hover:bg-rose-50 hover:text-rose-900"
+                                  title={isSelf ? "Cannot block own account" : "Suspend account"}
                                 >
                                   <Ban className="h-3 w-3" />
                                   <span>Block</span>
@@ -466,7 +443,7 @@ export default function AdminUsersPage() {
 
               {/* Mobile Card View */}
               <div className="md:hidden space-y-3">
-                {users.map((user) => {
+                {filteredUsers.map((user) => {
                   const isSelf =
                     (user.email && user.email.toLowerCase() === currentAdminEmail) ||
                     user._id === currentAdminId;
@@ -483,23 +460,25 @@ export default function AdminUsersPage() {
                             <img
                               src={user.image}
                               alt={user.name || "Customer"}
-                              className="h-9 w-9 rounded-full object-cover border border-border"
+                              className="h-10 w-10 rounded-full object-cover border border-border"
                             />
                           ) : (
-                            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-accent-foreground font-semibold text-xs">
+                            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground font-semibold text-sm">
                               {user.name ? user.name.charAt(0).toUpperCase() : "C"}
                             </span>
                           )}
-                          <div className="min-w-0">
+                          <div>
                             <h3 className="font-semibold text-foreground text-sm flex items-center gap-1.5">
                               <span>{user.name}</span>
                               {isSelf && (
-                                <span className="rounded bg-rose-100 text-rose-800 px-1 py-0.2 text-[9px] font-bold uppercase">
+                                <span className="rounded bg-rose-100 text-rose-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
                                   You
                                 </span>
                               )}
                             </h3>
-                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                            <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                              {user.email}
+                            </p>
                           </div>
                         </div>
 
@@ -516,25 +495,25 @@ export default function AdminUsersPage() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                      <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
-                          <span>Phone: </span>
+                          <span className="text-muted-foreground block text-[11px]">Phone:</span>
                           <span className="font-medium text-foreground">
                             {user.phone || "None"}
                           </span>
                         </div>
                         <div>
-                          <span>Joined: </span>
+                          <span className="text-muted-foreground block text-[11px]">Registered:</span>
                           <span className="font-medium text-foreground">
                             {formatDate(user.createdAt)}
                           </span>
                         </div>
                       </div>
 
-                      <div className="pt-1 flex items-center gap-2">
-                        <Link href={`/dashboard/admin/users/${user._id}`} className="flex-1">
-                          <Button variant="outline" size="sm" className="w-full text-xs gap-1.5">
-                            <Eye className="h-3.5 w-3.5" />
+                      <div className="pt-2 border-t border-border flex items-center justify-end gap-2">
+                        <Link href={`/dashboard/admin/users/${user._id}`}>
+                          <Button variant="outline" size="sm" className="gap-1 text-xs">
+                            <Eye className="h-3 w-3" />
                             <span>Details</span>
                           </Button>
                         </Link>
@@ -546,9 +525,9 @@ export default function AdminUsersPage() {
                             size="sm"
                             disabled={isSelf}
                             onClick={() => openStatusDialog(user, false)}
-                            className="flex-1 text-xs gap-1 border-emerald-300 text-emerald-800 hover:bg-emerald-50"
+                            className="gap-1 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50"
                           >
-                            <ShieldCheck className="h-3.5 w-3.5" />
+                            <ShieldCheck className="h-3 w-3" />
                             <span>Unblock</span>
                           </Button>
                         ) : (
@@ -558,9 +537,9 @@ export default function AdminUsersPage() {
                             size="sm"
                             disabled={isSelf}
                             onClick={() => openStatusDialog(user, true)}
-                            className="flex-1 text-xs gap-1 border-rose-300 text-rose-800 hover:bg-rose-50 disabled:opacity-40"
+                            className="gap-1 text-xs border-rose-300 text-rose-800 hover:bg-rose-50"
                           >
-                            <Ban className="h-3.5 w-3.5" />
+                            <Ban className="h-3 w-3" />
                             <span>Block</span>
                           </Button>
                         )}
@@ -569,83 +548,41 @@ export default function AdminUsersPage() {
                   );
                 })}
               </div>
-
-              {/* Pagination Controls */}
-              {pagination.totalPages > 1 && (
-                <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
-                  <p className="text-xs text-muted-foreground">
-                    Showing Page <strong className="text-foreground">{pagination.page}</strong> of{" "}
-                    <strong className="text-foreground">{pagination.totalPages}</strong> ({pagination.total} total clients)
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                      disabled={currentPage <= 1 || isLoading}
-                      className="gap-1 text-xs"
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                      <span>Previous</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => p + 1)}
-                      disabled={currentPage >= pagination.totalPages || isLoading}
-                      className="gap-1 text-xs"
-                    >
-                      <span>Next</span>
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
-            /* Empty State */
             <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center shadow-xs">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-foreground mb-4">
-                <Users className="h-7 w-7 text-primary" />
-              </div>
+              <Users className="mx-auto h-8 w-8 text-muted-foreground/60 mb-2" />
               <h2 className="font-serif text-xl font-semibold text-foreground">
-                No Customers Found
+                No Customers Match Filters
               </h2>
-              <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-                {searchQuery || statusFilter !== "all"
-                  ? "No registered customers match your current filter criteria. Try adjusting your search term or status filter."
-                  : "No customer accounts have registered on the SalonBook platform yet."}
+              <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
+                No customer accounts match your active search and filter criteria. Try adjusting or clearing your filters.
               </p>
-              {(searchQuery || statusFilter !== "all") && (
-                <div className="mt-5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSearchInput("");
-                      setSearchQuery("");
-                      setStatusFilter("all");
-                      setCurrentPage(1);
-                    }}
-                  >
-                    Reset Filters
-                  </Button>
-                </div>
-              )}
+              <div className="mt-5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearAllFilters}
+                  className="gap-1.5 text-xs"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>Clear All Filters</span>
+                </Button>
+              </div>
             </div>
           )}
         </div>
-      </div>
 
-      {/* Confirmation Dialog */}
-      <UserStatusDialog
-        isOpen={isDialogOpen}
-        user={selectedUser}
-        targetBlocked={targetBlocked}
-        isSubmitting={isUpdatingStatus}
-        onConfirm={handleConfirmStatusChange}
-        onClose={() => setIsDialogOpen(false)}
-      />
+        {/* Status Confirmation Dialog */}
+        <UserStatusDialog
+          isOpen={isDialogOpen}
+          onClose={() => setIsDialogOpen(false)}
+          onConfirm={handleConfirmStatusChange}
+          user={selectedUser}
+          targetBlocked={targetBlocked}
+          isSubmitting={isUpdatingStatus}
+        />
+      </div>
     </AdminGuard>
   );
 }
