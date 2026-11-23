@@ -107,76 +107,13 @@ export function Navbar() {
         >
           {isAdmin ? (
             <>
-              <Link
-                href="/dashboard/admin"
-                className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  isAdminRouteActive("/dashboard/admin")
-                    ? "bg-rose-100 text-rose-900 font-semibold border border-rose-200"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                Overview
-              </Link>
-              <Link
-                href="/dashboard/admin/services"
-                className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  isAdminRouteActive("/dashboard/admin/services")
-                    ? "bg-rose-100 text-rose-900 font-semibold border border-rose-200"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                Manage Services
-              </Link>
-              <Link
-                href="/dashboard/admin/barbers"
-                className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  isAdminRouteActive("/dashboard/admin/barbers")
-                    ? "bg-rose-100 text-rose-900 font-semibold border border-rose-200"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                Manage Barbers
-              </Link>
-              <Link
-                href="/dashboard/admin/appointments"
-                className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  isAdminRouteActive("/dashboard/admin/appointments")
-                    ? "bg-rose-100 text-rose-900 font-semibold border border-rose-200"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                Manage Appointments
-              </Link>
-              <Link
-                href="/dashboard/admin/users"
-                className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  isAdminRouteActive("/dashboard/admin/users")
-                    ? "bg-rose-100 text-rose-900 font-semibold border border-rose-200"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                Manage Customers
-              </Link>
-              <Link
-                href="/dashboard/admin/transactions"
-                className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  isAdminRouteActive("/dashboard/admin/transactions")
-                    ? "bg-rose-100 text-rose-900 font-semibold border border-rose-200"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                Transactions
-              </Link>
-              <Link
-                href="/dashboard/profile"
-                className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  pathname === "/dashboard/profile"
-                    ? "bg-rose-100 text-rose-900 font-semibold border border-rose-200"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                Profile
-              </Link>
+             
+              
+             
+              
+              
+              
+              
             </>
           ) : (
             <>
@@ -222,36 +159,9 @@ export function Navbar() {
                   >
                     Dashboard
                   </Link>
-                  <Link
-                    href="/dashboard/appointments"
-                    className={`text-sm font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-2 py-1 ${
-                      isCustomerRouteActive("/dashboard/appointments")
-                        ? "text-primary font-semibold"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    My Appointments
-                  </Link>
-                  <Link
-                    href="/dashboard/payments"
-                    className={`text-sm font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-2 py-1 ${
-                      isCustomerRouteActive("/dashboard/payments")
-                        ? "text-primary font-semibold"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    Payment History
-                  </Link>
-                  <Link
-                    href="/dashboard/profile"
-                    className={`text-sm font-medium transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-2 py-1 ${
-                      pathname === "/dashboard/profile"
-                        ? "text-primary font-semibold"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    Profile
-                  </Link>
+                 
+                
+                  
                 </>
               )}
             </>
