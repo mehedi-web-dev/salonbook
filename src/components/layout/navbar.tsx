@@ -80,21 +80,21 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur-sm">
-      <div className="container mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+      <div className="container mx-auto flex h-16 sm:h-20 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Brand Logo */}
         <Link
           href="/"
           onClick={() => setIsOpen(false)}
-          className="flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg shrink-0 transition-opacity hover:opacity-95"
+          className="flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg shrink-0 transition-opacity hover:opacity-90"
           aria-label="SalonBook Barber & Grooming Homepage"
         >
-          <div className="relative h-12 w-[72px] sm:h-13 sm:w-[78px] overflow-hidden rounded-lg bg-[#09090a] shadow-xs ring-1 ring-border/60">
+          <div className="relative h-[56px] w-[84px] sm:h-[74px] sm:w-[110px] shrink-0">
             <Image
               src="/images/salonbook-barber-logo.png"
               alt="SalonBook Barber & Grooming"
               fill
               priority
-              sizes="(max-width: 640px) 72px, 78px"
+              sizes="(max-width: 640px) 84px, 110px"
               className="object-contain"
             />
           </div>
@@ -281,7 +281,11 @@ export function Navbar() {
                   />
                 ) : (
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-accent-foreground">
-                    {user.name ? user.name.charAt(0).toUpperCase() : <UserIcon className="h-3.5 w-3.5" />}
+                    {user.name ? (
+                      user.name.charAt(0).toUpperCase()
+                    ) : (
+                      <UserIcon className="h-3.5 w-3.5" />
+                    )}
                   </span>
                 )}
                 <span className="text-xs font-medium text-foreground max-w-[120px] truncate">
@@ -345,13 +349,21 @@ export function Navbar() {
         <div className="flex items-center gap-2 md:hidden">
           {isAdmin ? (
             <Link href="/dashboard/admin">
-              <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs text-rose-800 border-rose-200">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 text-xs text-rose-800 border-rose-200"
+              >
                 Admin
               </Button>
             </Link>
           ) : (
             <Link href="/services">
-              <Button variant="primary" size="sm" className="h-8 px-2.5 text-xs">
+              <Button
+                variant="primary"
+                size="sm"
+                className="h-8 px-2.5 text-xs"
+              >
                 Book Now
               </Button>
             </Link>
@@ -362,7 +374,9 @@ export function Navbar() {
             onClick={() => setIsOpen((prev) => !prev)}
             aria-expanded={isOpen}
             aria-controls="mobile-navigation-drawer"
-            aria-label={isOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-label={
+              isOpen ? "Close navigation menu" : "Open navigation menu"
+            }
             className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -391,12 +405,20 @@ export function Navbar() {
                   />
                 ) : (
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground shrink-0">
-                    {user.name ? user.name.charAt(0).toUpperCase() : <UserIcon className="h-4 w-4" />}
+                    {user.name ? (
+                      user.name.charAt(0).toUpperCase()
+                    ) : (
+                      <UserIcon className="h-4 w-4" />
+                    )}
                   </span>
                 )}
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-foreground truncate">{user.name}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+                  <p className="text-xs font-medium text-foreground truncate">
+                    {user.name}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {user.email}
+                  </p>
                 </div>
               </div>
               <span

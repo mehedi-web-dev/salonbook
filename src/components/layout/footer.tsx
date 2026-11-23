@@ -9,15 +9,15 @@ export function Footer() {
           {/* Brand Logo */}
           <Link
             href="/"
-            className="flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg shrink-0 transition-opacity hover:opacity-95"
+            className="flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg shrink-0 transition-opacity hover:opacity-90"
             aria-label="SalonBook Barber & Grooming Homepage"
           >
-            <div className="relative h-16 w-24 sm:h-20 sm:w-30 overflow-hidden rounded-lg bg-[#09090a] shadow-xs ring-1 ring-border/60">
+            <div className="relative h-[80px] w-[120px] sm:h-[114px] sm:w-[170px] shrink-0">
               <Image
                 src="/images/salonbook-barber-logo.png"
                 alt="SalonBook Barber & Grooming"
                 fill
-                sizes="(max-width: 640px) 96px, 120px"
+                sizes="(max-width: 640px) 120px, 170px"
                 className="object-contain"
               />
             </div>
