@@ -136,6 +136,7 @@ export default function DashboardPage() {
   const appStats = computeAppointmentStats(appointments);
   const expenditureStats = computeCustomerExpenditure(payments);
   const monthlyBuckets = groupAppointmentsByMonth(appointments);
+  const paidAppointmentsCount = appointments.filter((a) => a.paymentStatus === "paid").length;
 
   // Transform recent appointments for activity feed
   const recentActivityItems = appointments.slice(0, 5).map((app) => ({
@@ -238,7 +239,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Total Appointments */}
             <StatCard
-              title="Total Requests"
+              title="Total Appointments"
               value={appStats.total}
               subtitle="All reservations initiated"
               icon={Calendar}
@@ -254,23 +255,9 @@ export default function DashboardPage() {
               }
             />
 
-            {/* Confirmed Appointments */}
-            <StatCard
-              title="Confirmed Bookings"
-              value={appStats.confirmed}
-              subtitle={`${appStats.confirmedPct}% of your total bookings`}
-              icon={CheckCircle2}
-              accentColor="emerald"
-              footer={
-                <span className="text-[11px] font-medium text-emerald-800">
-                  Ready for salon attendance
-                </span>
-              }
-            />
-
             {/* Pending Appointments */}
             <StatCard
-              title="Pending Confirmation"
+              title="Pending Appointments"
               value={appStats.pending}
               subtitle={`${appStats.pendingPct}% awaiting stylist review`}
               icon={Clock}
@@ -282,11 +269,25 @@ export default function DashboardPage() {
               }
             />
 
-            {/* Total Paid Expenditure */}
+            {/* Confirmed Appointments */}
             <StatCard
-              title="Total Expenditure"
-              value={expenditureStats.primaryTotalDisplay}
-              subtitle={`${expenditureStats.paidCount} paid ${expenditureStats.paidCount === 1 ? "treatment" : "treatments"}`}
+              title="Confirmed Appointments"
+              value={appStats.confirmed}
+              subtitle={`${appStats.confirmedPct}% of your total bookings`}
+              icon={CheckCircle2}
+              accentColor="emerald"
+              footer={
+                <span className="text-[11px] font-medium text-emerald-800">
+                  Ready for salon attendance
+                </span>
+              }
+            />
+
+            {/* Paid Appointments */}
+            <StatCard
+              title="Paid Appointments"
+              value={paidAppointmentsCount}
+              subtitle={`${expenditureStats.paidCount} verified paid transactions`}
               icon={CreditCard}
               accentColor="primary"
               footer={
@@ -294,7 +295,7 @@ export default function DashboardPage() {
                   href="/dashboard/payments"
                   className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
                 >
-                  <span>View payment receipts</span>
+                  <span>Total spent: {expenditureStats.primaryTotalDisplay}</span>
                   <ArrowRight className="h-3 w-3" />
                 </Link>
               }

@@ -136,10 +136,7 @@ export function resolveApiBaseUrl(): string {
  */
 export function getAuthClientBaseUrl(): string {
   if (typeof window !== "undefined" && window.location?.origin) {
-    const origin = window.location.origin;
-    if (!isLocalhostUrl(origin)) {
-      return sanitizeApiUrl(origin);
-    }
+    return sanitizeApiUrl(window.location.origin);
   }
   return isProductionEnvironment() ? PRODUCTION_FRONTEND_URL : LOCAL_DEV_URL;
 }

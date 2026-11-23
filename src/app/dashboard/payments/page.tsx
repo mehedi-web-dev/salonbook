@@ -234,7 +234,7 @@ export default function PaymentHistoryPage() {
           ) : payments.length > 0 ? (
             <div className="space-y-4">
               {/* Desktop Table View */}
-              <div className="hidden md:block overflow-hidden rounded-lg border border-border bg-card shadow-xs">
+              <div className="hidden md:block overflow-x-auto rounded-lg border border-border bg-card shadow-xs">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-border bg-muted/40 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     <tr>

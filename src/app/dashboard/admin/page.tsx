@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Users,
   Sparkles,
+  Scissors,
   Calendar,
   CreditCard,
   AlertCircle,
@@ -244,7 +245,7 @@ export default function AdminDashboardPage() {
           )}
 
           {/* Quick Nav Shortcuts */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <Link
               href="/dashboard/admin/users"
               className="group flex flex-col justify-between rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/50 hover:shadow-xs"
@@ -274,6 +275,22 @@ export default function AdminDashboardPage() {
               <div className="mt-3">
                 <div className="text-sm font-semibold text-foreground">Services</div>
                 <div className="text-xs text-muted-foreground">Catalog & pricing</div>
+              </div>
+            </Link>
+
+            <Link
+              href="/dashboard/admin/barbers"
+              className="group flex flex-col justify-between rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/50 hover:shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <div className="rounded-lg bg-accent/60 p-2 text-accent-foreground">
+                  <Scissors className="h-4 w-4 text-primary" />
+                </div>
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+              <div className="mt-3">
+                <div className="text-sm font-semibold text-foreground">Barbers</div>
+                <div className="text-xs text-muted-foreground">Team & profiles</div>
               </div>
             </Link>
 
@@ -325,94 +342,107 @@ export default function AdminDashboardPage() {
             </div>
           ) : stats ? (
             <>
-              {/* Top Operational Metrics KPI Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Customers Metric */}
-                <StatCard
-                  title="Registered Customers"
-                  value={stats.customers.total}
-                  subtitle="Active client accounts"
-                  icon={Users}
-                  accentColor="primary"
-                  footer={
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-1 text-emerald-800 font-medium">
-                        <CheckCircle2 className="h-3 w-3" />
-                        <span>{stats.customers.active} Active</span>
-                      </span>
-                      <span className="flex items-center gap-1 text-rose-800 font-medium">
-                        <XCircle className="h-3 w-3" />
-                        <span>{stats.customers.blocked} Blocked</span>
-                      </span>
-                    </div>
-                  }
-                />
+              {(() => {
+                const primaryRevenue =
+                  stats.revenue.byCurrency.find(
+                    (c) => c.currency.toUpperCase() === "USD"
+                  ) || stats.revenue.byCurrency[0];
+                const totalRevenueDisplay = primaryRevenue
+                  ? formatCurrency(primaryRevenue.totalAmount, primaryRevenue.currency)
+                  : "$0.00";
 
-                {/* Services Metric */}
-                <StatCard
-                  title="Services Catalog"
-                  value={stats.services.total}
-                  subtitle="Treatment offerings"
-                  icon={Sparkles}
-                  accentColor="primary"
-                  footer={
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-1 text-emerald-800 font-medium">
-                        <CheckCircle2 className="h-3 w-3" />
-                        <span>{stats.services.active} Live</span>
-                      </span>
-                      <span className="flex items-center gap-1 text-muted-foreground font-medium">
-                        <Tag className="h-3 w-3" />
-                        <span>{stats.services.inactive} Inactive</span>
-                      </span>
-                    </div>
-                  }
-                />
+                return (
+                  /* Top Operational Metrics KPI Grid */
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* 1. Total Services */}
+                    <StatCard
+                      title="Total Services"
+                      value={stats.services.total}
+                      subtitle="Treatment offerings"
+                      icon={Sparkles}
+                      accentColor="primary"
+                      footer={
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1 text-emerald-800 font-medium">
+                            <CheckCircle2 className="h-3 w-3" />
+                            <span>{stats.services.active} Live</span>
+                          </span>
+                          <span className="flex items-center gap-1 text-muted-foreground font-medium">
+                            <Tag className="h-3 w-3" />
+                            <span>{stats.services.inactive} Inactive</span>
+                          </span>
+                        </div>
+                      }
+                    />
 
-                {/* Appointments Metric */}
-                <StatCard
-                  title="Total Reservations"
-                  value={stats.appointments.total}
-                  subtitle="All client bookings"
-                  icon={Calendar}
-                  accentColor="primary"
-                  footer={
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-amber-800 font-medium">
-                        {stats.appointments.pending} Pending
-                      </span>
-                      <span className="text-emerald-800 font-medium">
-                        {stats.appointments.confirmed} Confirmed
-                      </span>
-                      <span className="text-rose-800 font-medium">
-                        {stats.appointments.cancelled} Cancelled
-                      </span>
-                    </div>
-                  }
-                />
+                    {/* 2. Total Appointments */}
+                    <StatCard
+                      title="Total Appointments"
+                      value={stats.appointments.total}
+                      subtitle="All client bookings"
+                      icon={Calendar}
+                      accentColor="primary"
+                      footer={
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-amber-800 font-medium">
+                            {stats.appointments.pending} Pending
+                          </span>
+                          <span className="text-emerald-800 font-medium">
+                            {stats.appointments.confirmed} Confirmed
+                          </span>
+                          <span className="text-rose-800 font-medium">
+                            {stats.appointments.cancelled} Cancelled
+                          </span>
+                        </div>
+                      }
+                    />
 
-                {/* Transactions Metric */}
-                <StatCard
-                  title="Total Transactions"
-                  value={stats.transactions.total}
-                  subtitle="Stripe payment attempts"
-                  icon={CreditCard}
-                  accentColor="primary"
-                  footer={
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-emerald-800 font-medium">
-                        {stats.transactions.paid} Paid
-                      </span>
-                      <span className="text-rose-800 font-medium">
-                        {stats.transactions.failed} Failed
-                      </span>
-                      <span className="text-amber-800 font-medium">
-                        {stats.transactions.reconciliationRequired} Review
-                      </span>
-                    </div>
-                  }
-                />
-              </div>
+                    {/* 3. Total Customers */}
+                    <StatCard
+                      title="Total Customers"
+                      value={stats.customers.total}
+                      subtitle="Active client accounts"
+                      icon={Users}
+                      accentColor="primary"
+                      footer={
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1 text-emerald-800 font-medium">
+                            <CheckCircle2 className="h-3 w-3" />
+                            <span>{stats.customers.active} Active</span>
+                          </span>
+                          <span className="flex items-center gap-1 text-rose-800 font-medium">
+                            <XCircle className="h-3 w-3" />
+                            <span>{stats.customers.blocked} Blocked</span>
+                          </span>
+                        </div>
+                      }
+                    />
+
+                    {/* 4. Total Revenue */}
+                    <StatCard
+                      title="Total Revenue"
+                      value={totalRevenueDisplay}
+                      subtitle={`${stats.transactions.paid} verified paid transactions`}
+                      icon={CreditCard}
+                      accentColor="emerald"
+                      footer={
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1 text-emerald-800 font-medium">
+                            <CheckCircle2 className="h-3 w-3" />
+                            <span>Strictly verified funds</span>
+                          </span>
+                          <span className="text-muted-foreground font-medium">
+                            {stats.revenue.byCurrency.length}{" "}
+                            {stats.revenue.byCurrency.length === 1
+                              ? "currency"
+                              : "currencies"}
+                          </span>
+                        </div>
+                      }
+                    />
+                  </div>
+                );
+              })()}
 
               {/* Verified Revenue Section — Currency Isolated */}
               <RevenueOverviewChart
