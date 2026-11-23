@@ -1,22 +1,30 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
 
 export function Footer() {
   return (
     <footer className="w-full border-t border-border bg-secondary/50 py-10 text-muted-foreground">
       <div className="container mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
-          <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-accent-foreground">
-              <Sparkles className="h-4 w-4" />
-            </span>
-            <span className="font-serif text-lg font-medium text-foreground">
-              SalonBook
-            </span>
-          </div>
+          {/* Brand Logo */}
+          <Link
+            href="/"
+            className="flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg shrink-0 transition-opacity hover:opacity-95"
+            aria-label="SalonBook Barber & Grooming Homepage"
+          >
+            <div className="relative h-16 w-24 sm:h-20 sm:w-30 overflow-hidden rounded-lg bg-[#09090a] shadow-xs ring-1 ring-border/60">
+              <Image
+                src="/images/salonbook-barber-logo.png"
+                alt="SalonBook Barber & Grooming"
+                fill
+                sizes="(max-width: 640px) 96px, 120px"
+                className="object-contain"
+              />
+            </div>
+          </Link>
 
-          <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} SalonBook. Premium Salon & Spa Booking. All rights reserved.
+          <p className="text-xs text-muted-foreground text-center sm:text-left">
+            &copy; {new Date().getFullYear()} SalonBook. Premium Salon &amp; Spa Booking. All rights reserved.
           </p>
 
           <div className="flex items-center gap-5 text-xs">

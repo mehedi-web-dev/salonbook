@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Sparkles, Menu, X, LogOut, User as UserIcon, Loader2 } from "lucide-react";
+import { Menu, X, LogOut, User as UserIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useSession, signOut } from "@/lib/auth-client";
@@ -84,14 +85,19 @@ export function Navbar() {
         <Link
           href="/"
           onClick={() => setIsOpen(false)}
-          className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md shrink-0"
+          className="flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg shrink-0 transition-opacity hover:opacity-95"
+          aria-label="SalonBook Barber & Grooming Homepage"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-accent text-accent-foreground">
-            <Sparkles className="h-5 w-5" />
-          </span>
-          <span className="font-serif text-xl font-semibold tracking-tight text-foreground">
-            SalonBook
-          </span>
+          <div className="relative h-12 w-[72px] sm:h-13 sm:w-[78px] overflow-hidden rounded-lg bg-[#09090a] shadow-xs ring-1 ring-border/60">
+            <Image
+              src="/images/salonbook-barber-logo.png"
+              alt="SalonBook Barber & Grooming"
+              fill
+              priority
+              sizes="(max-width: 640px) 72px, 78px"
+              className="object-contain"
+            />
+          </div>
         </Link>
 
         {/* Desktop Navigation Links */}
