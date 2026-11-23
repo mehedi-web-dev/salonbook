@@ -3,6 +3,7 @@ import { FeaturedCategories } from "@/components/home/featured-categories";
 import { FeaturedServices } from "@/components/home/featured-services";
 import { WhyChooseUs } from "@/components/home/why-choose-us";
 import { HowItWorks } from "@/components/home/how-it-works";
+import { Testimonials } from "@/components/home/testimonials";
 import { CtaBanner } from "@/components/home/cta-banner";
 
 export default function Home() {
@@ -23,7 +24,10 @@ export default function Home() {
       {/* 5. How It Works (3 Simple Steps) */}
       <HowItWorks />
 
-      {/* 6. Call to Action Banner */}
+      {/* 6. Customer Testimonials (Demo Community Highlights) */}
+      <Testimonials />
+
+      {/* 7. Call to Action Banner */}
       <CtaBanner />
     </div>
   );
