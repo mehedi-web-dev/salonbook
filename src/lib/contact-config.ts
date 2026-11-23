@@ -56,6 +56,26 @@ export const CONTACT_CONFIG = {
     actionUrl: undefined,
     badge: "Placeholder (Configurable)",
   },
+  socialMedia: {
+    facebook: {
+      name: "Facebook",
+      url: "https://facebook.com/salonbook.placeholder",
+      isPlaceholder: true,
+      description: "Official SalonBook Facebook page (Configurable)",
+    },
+    instagram: {
+      name: "Instagram",
+      url: "https://instagram.com/salonbook.placeholder",
+      isPlaceholder: true,
+      description: "Official SalonBook Instagram profile (Configurable)",
+    },
+    youtube: {
+      name: "YouTube",
+      url: "https://youtube.com/@salonbook.placeholder",
+      isPlaceholder: true,
+      description: "Official SalonBook YouTube channel (Configurable)",
+    },
+  },
 } as const;
 
 export const FAQ_ITEMS = [
