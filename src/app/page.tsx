@@ -1,6 +1,7 @@
 import { Hero } from "@/components/home/hero";
 import { FeaturedCategories } from "@/components/home/featured-categories";
 import { FeaturedServices } from "@/components/home/featured-services";
+import { FeaturedBarbers } from "@/components/home/featured-barbers";
 import { WhyChooseUs } from "@/components/home/why-choose-us";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { Testimonials } from "@/components/home/testimonials";
@@ -18,16 +19,19 @@ export default function Home() {
       {/* 3. Dynamic Featured Services Section */}
       <FeaturedServices />
 
-      {/* 4. Why Choose SalonBook? Benefits Section */}
+      {/* 4. Meet Our Expert Barbers Section */}
+      <FeaturedBarbers />
+
+      {/* 5. Why Choose SalonBook? Benefits Section */}
       <WhyChooseUs />
 
-      {/* 5. How It Works (3 Simple Steps) */}
+      {/* 6. How It Works (3 Simple Steps) */}
       <HowItWorks />
 
-      {/* 6. Customer Testimonials (Demo Community Highlights) */}
+      {/* 7. Customer Testimonials (Demo Community Highlights) */}
       <Testimonials />
 
-      {/* 7. Call to Action Banner */}
+      {/* 8. Call to Action Banner */}
       <CtaBanner />
     </div>
   );

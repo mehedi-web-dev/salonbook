@@ -122,6 +122,16 @@ export function Navbar() {
                 Manage Services
               </Link>
               <Link
+                href="/dashboard/admin/barbers"
+                className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  isAdminRouteActive("/dashboard/admin/barbers")
+                    ? "bg-rose-100 text-rose-900 font-semibold border border-rose-200"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                Manage Barbers
+              </Link>
+              <Link
                 href="/dashboard/admin/appointments"
                 className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                   isAdminRouteActive("/dashboard/admin/appointments")
@@ -420,6 +430,17 @@ export function Navbar() {
                   }`}
                 >
                   Manage Services
+                </Link>
+                <Link
+                  href="/dashboard/admin/barbers"
+                  onClick={() => setIsOpen(false)}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    isAdminRouteActive("/dashboard/admin/barbers")
+                      ? "bg-rose-100 text-rose-900 font-semibold"
+                      : "text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Manage Barbers
                 </Link>
                 <Link
                   href="/dashboard/admin/appointments"

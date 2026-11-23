@@ -384,3 +384,49 @@ export interface UpdateProfileInput {
   phone?: string | null;
   image?: string | null;
 }
+
+// ==========================================
+// Barber Management Types
+// ==========================================
+
+export interface Barber {
+  _id: string;
+  name: string;
+  image: string;
+  designation: string;
+  specialization: string[];
+  experience: number; // in years
+  bio?: string;
+  serviceIds: string[];
+  services?: Service[];
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BarbersResponse {
+  success: boolean;
+  count: number;
+  data: Barber[];
+  message?: string;
+}
+
+export interface SingleBarberResponse {
+  success: boolean;
+  data?: Barber;
+  message?: string;
+}
+
+export interface CreateBarberInput {
+  name: string;
+  designation: string;
+  specialization: string[] | string;
+  experience: number | string;
+  bio?: string;
+  serviceIds?: string[] | string;
+  isActive?: boolean;
+  image?: string;
+}
+
+export type UpdateBarberInput = Partial<CreateBarberInput>;
+

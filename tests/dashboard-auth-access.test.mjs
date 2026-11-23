@@ -151,6 +151,7 @@ describe("Navbar Visibility & Navigation Policy", () => {
         links: [
           "Overview",
           "Manage Services",
+          "Manage Barbers",
           "Manage Appointments",
           "Manage Customers",
           "Transactions",

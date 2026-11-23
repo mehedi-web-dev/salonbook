@@ -199,6 +199,11 @@ export const API_ENDPOINTS = {
     MY: `${API_BASE_URL}/api/payments/my`,
     MY_BY_ID: (id: string) => `${API_BASE_URL}/api/payments/my/${id}`,
   },
+  BARBERS: {
+    BASE: `${API_BASE_URL}/api/barbers`,
+    BY_ID: (id: string) => `${API_BASE_URL}/api/barbers/${id}`,
+    STATUS: (id: string) => `${API_BASE_URL}/api/barbers/${id}/status`,
+  },
   ADMIN: {
     STATS: `${API_BASE_URL}/api/admin/dashboard/stats`,
     USERS: `${API_BASE_URL}/api/admin/users`,
